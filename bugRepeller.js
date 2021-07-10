@@ -130,7 +130,7 @@ function RollAnNSidedDie(n){
 }
 
    gameState.pelletsLoop = this.time.addEvent({
-    delay:450,
+    delay:500,
     callback:genPellet,
     callbackScope: this,
     loop: true,
@@ -224,7 +224,7 @@ if (bug.texture.key === "2048"){
             }
 
             //now, let's spawn an extra "asshole" number at the top at a preset interval
-            if (gameState.randomspawncounter===3){
+            if (gameState.randomspawncounter<=3){
               console.log("triggered random spawn")
               //spawn another number
               
