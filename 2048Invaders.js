@@ -25,10 +25,10 @@ function sortedEnemies() {
   return orderedByXCoord;
 }
 function sortedEnemiesY() {
-  const orderedByXCoord = gameState.enemies
+  const orderedByYCoord = gameState.enemies
     .getChildren()
     .sort((a, b) => a.y - b.y);
-  return orderedByXCoord;
+  return orderedByYCoord;
 }
 
 function sortedEnemiesRows() {
@@ -68,10 +68,16 @@ const initialValues = {
   enemyVelocity: 0.5,
   activeBug: 0,
   randomspawncounter: 0,
-  toprowcount: 0,
-  toprow: Array(8).fill("full"),
-  arraypos: 0,
-  bottomrow: 8,
+  topRow: {
+    0: null,
+    1: null,
+    2: null,
+    3: null,
+    4: null,
+    5: null,
+    6: null,
+    7: null,
+  },
   sumValueOfEnemies: 0,
   scale: 0.5,
 };
@@ -95,18 +101,19 @@ function create() {
   platforms.create(225, 400, "platform").setScale(1, 0.3).refreshBody();
 
   gameState.enemies = this.physics.add.group();
-  //hardcoded this for now, maybe someone else can make it better
+  //create 2 rows of 8 enemies with value 4
   for (let xVal = 1; xVal < 9; xVal++) {
     for (let yVal = 1; yVal <= 2; yVal++) {
-      gameState.enemies
+      const enemy = gameState.enemies
         .create(50 * xVal, 50 * yVal, "4")
         .setScale(gameState.scale)
         .setGravityY(-200);
     }
   }
+  //create 2 rows of 8 enemies with value 2
   for (let xVal = 1; xVal < 9; xVal++) {
     for (let yVal = 3; yVal <= 4; yVal++) {
-      gameState.enemies
+      const enemy = gameState.enemies
         .create(50 * xVal, 50 * yVal, "2")
         .setScale(gameState.scale)
         .setGravityY(-200);
@@ -129,6 +136,61 @@ function create() {
     newPellet.setVelocityY(50);
   }
 
+  const checkForBottomRowEmpty = (yVal, yValOldBug) => {
+    const sortedEnemies = sortedEnemiesY();
+    const lowestEnemyY = Math.max(yVal, yValOldBug);
+    return (
+      sortedEnemies.filter((enemy) => enemy.y === lowestEnemyY).length == 0
+    );
+  };
+
+  const topRowHasSpace = () => {
+    if (
+      Object.values(gameState.topRow).filter((slot) => slot != null).length == 8
+    ) {
+      const newTopRow = Object.fromEntries(
+        Object.keys(gameState.topRow).map((key) => [key, null])
+      );
+      gameState.topRow = newTopRow;
+    }
+    return (
+      Object.values(gameState.topRow).filter((slot) => slot != null).length >= 1
+    );
+  };
+
+  const findValidXSlot = () => {
+    let slot = RollAnNSidedDie(8);
+    console.log(
+      `outside while loop: slot: ${slot}; gameState.toprow.slot: ${gameState.topRow[slot]}`
+    );
+
+    while (gameState.topRow[slot] != null) {
+      console.log(
+        `inside while loop: slot: ${slot}; gameState.toprow.slot: ${gameState.topRow[slot]}`
+      );
+      slot = RollAnNSidedDie(8);
+    }
+    gameState.topRow[slot] = slot;
+    console.log(gameState.topRow);
+    return slot * 50 + sortedEnemies()[0].x;
+  };
+
+  const spawnDoubleBug = (hitBug, oldBug) => {
+    const yVal = Math.ceil(hitBug.y / 10) * 10;
+    const yValOldBug = Math.ceil(oldBug.y / 10) * 10;
+    const doublebug = hitBug.texture.key * 2;
+    const xVal = hitBug.x;
+    hitBug.destroy();
+    oldBug.destroy();
+    const rowIsEmpty = checkForBottomRowEmpty(yVal, yValOldBug);
+    gameState.activeBug = 0;
+    gameState.enemies
+      .create(xVal, yVal, doublebug)
+      .setScale(gameState.scale)
+      .setGravityY(-200);
+    return rowIsEmpty;
+  };
+
   //generate a random bug within the parameters we want
   function getRandBug(bug) {
     let basenum = bug.texture.key;
@@ -137,7 +199,7 @@ function create() {
   }
 
   function RollAnNSidedDie(n) {
-    let num = Math.floor(Math.random() * n);
+    const num = Math.floor(Math.random() * n);
     return num;
   }
 
@@ -161,15 +223,17 @@ function create() {
   });
 
   //comment out the enemy pellet collider below to test the game without dying
-  this.physics.add.collider(pellets, gameState.player, () => {
-    gameOver(this);
-  });
+  // this.physics.add.collider(pellets, gameState.player, () => {
+  //   //todo give the player HP instead of immediate game over
+  //   gameOver(this);
+  // });
 
   // Creates cursor objects to be used in update()
   gameState.cursors = this.input.keyboard.createCursorKeys();
 
   gameState.playerBullets = this.physics.add.group();
 
+  //main game loop
   this.physics.add.collider(
     gameState.enemies,
     gameState.playerBullets,
@@ -197,77 +261,44 @@ function create() {
         }
         //otherwise, they hit 2 different bugs, and we need to check to see if their values are equal
         else if (hitBug.texture.key === oldBug.texture.key) {
-          //they match, so let's get rid of them and spawn double their value
-          let doublebug = hitBug.texture.key * 2;
-          let xVal = hitBug.x;
-          let yVal = Math.ceil(hitBug.y / 10) * 10;
-          let oldBugYVal = Math.ceil(oldBug.y / 10) * 10;
-          let lowestBug =
-            Math.ceil(sortedEnemiesY()[sortedEnemiesY().length - 1].y / 10) *
-            10;
-          hitBug.destroy();
-          oldBug.destroy();
-          gameState.activeBug = 0;
-          gameState.enemies
-            .create(xVal, yVal, doublebug)
-            .setScale(gameState.scale)
-            .setGravityY(-200);
+          //they match, so let's get rid of them and spawn double their value, after checking for row fullness
+
+          const rowIsEmpty = spawnDoubleBug(hitBug, oldBug);
+
           //here we have a 100% chance to increase randomSpawnCounter as well as a 33% chance to increase it twice
           gameState.randomspawncounter++;
           if (RollAnNSidedDie(3) === 0) {
             gameState.randomspawncounter++;
           }
-          if (oldBugYVal === lowestBug && yVal === lowestBug) {
-            gameState.bottomrow--;
-          } else if (oldBugYVal === lowestBug && oldBugYVal > yVal) {
-            gameState.bottomrow--;
-          }
-
-          //if the bottom row is now empty, move everything down by 10
-          if (gameState.bottomrow === 0) {
-            for (i = 0; i < sortedEnemies().length; i++) {
-              if (
-                sortedEnemies()[i].y ===
-                Math.ceil(
-                  sortedEnemiesY()[sortedEnemiesY().length - 1].y / 10
-                ) *
-                  10
-              ) {
-                gameState.bottomrow++;
-              }
-            }
-            gameState.enemies
-              .getChildren()
-              .forEach((bug) => (bug.y = bug.y + 50));
+          //if the bottom row is now empty, move everything down by 1 row
+          if (rowIsEmpty) {
+            gameState.enemies.getChildren().forEach((bug) => {
+              bug.y = bug.y + 50;
+            });
           }
 
           //now, let's spawn an extra "jerk" number at the top at a preset interval
-          if (gameState.randomspawncounter >= 3) {
+          if (gameState.randomspawncounter >= 0) {
             //spawn another number
-            console.log("another number");
-
-            if (gameState.toprow.indexOf(0) != -1) {
-              do {
-                gameState.arraypos = RollAnNSidedDie(8);
-              } while (gameState.toprow[gameState.arraypos] === "full");
+            if (topRowHasSpace()) {
               yVal = sortedEnemiesY()[0].y;
-              xVal = gameState.arraypos * 50 + sortedEnemies()[0].x;
-              gameState.enemies
+              //find valid x slot
+              xVal = findValidXSlot();
+
+              const newBug = gameState.enemies
                 .create(xVal, yVal, getRandBug(hitBug))
                 .setScale(gameState.scale)
                 .setGravityY(-200);
-              gameState.toprow[gameState.arraypos] = "full";
             } else {
-              //this must mean the top row is full, so we start a new row
-              gameState.toprow = Array(8).fill(0);
-              gameState.arraypos = RollAnNSidedDie(8);
-              yVal = sortedEnemiesY()[0].y - 50;
-              xVal = gameState.arraypos * 50 + sortedEnemies()[0].x;
-              gameState.enemies
+              //spawn bug in new row
+              const xVal = findValidXSlot();
+
+              const yVal = sortedEnemiesY()[0].y - 50;
+              const newBug = gameState.enemies
                 .create(xVal, yVal, getRandBug(hitBug))
                 .setScale(gameState.scale)
                 .setGravityY(-200);
-              gameState.toprow[gameState.arraypos] = "full";
+
               gameState.enemies
                 .getChildren()
                 .forEach((bug) => (bug.y = bug.y + 10));
@@ -275,6 +306,7 @@ function create() {
             gameState.randomspawncounter = 0;
           }
         }
+
         //otherwise, they hit two different bugs but NOT ones that match, so we reset
         else {
           gameState.activeBug = hitBug;
