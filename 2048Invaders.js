@@ -1,6 +1,12 @@
 function preload() {
-  this.load.image("2", "assets/2.png");
-  this.load.image("4", "assets/4.png");
+  this.load.spritesheet("2", "assets/2.png", {
+    frameWidth: 83,
+    frameHeight: 90,
+  });
+  this.load.spritesheet("4", "assets/4.png", {
+    frameWidth: 83,
+    frameHeight: 90,
+  });
   this.load.image("8", "assets/8.png");
   this.load.image("16", "assets/16.png");
   this.load.image("32", "assets/32.png");
@@ -145,7 +151,7 @@ function create() {
   for (let xVal = 1; xVal < 9; xVal++) {
     for (let yVal = 1; yVal <= 2; yVal++) {
       gameState.enemies
-        .create(50 * xVal, 50 * yVal + TOP_BUFFER, "4")
+        .create(50 * xVal, 50 * yVal + TOP_BUFFER, "4", 0)
         .setScale(gameState.scale)
         .setGravityY(-200);
     }
@@ -154,7 +160,7 @@ function create() {
   for (let xVal = 1; xVal < 9; xVal++) {
     for (let yVal = 3; yVal <= 4; yVal++) {
       gameState.enemies
-        .create(50 * xVal, 50 * yVal + TOP_BUFFER, "2")
+        .create(50 * xVal, 50 * yVal + TOP_BUFFER, "2", 0)
         .setScale(gameState.scale)
         .setGravityY(-200);
     }
@@ -175,16 +181,15 @@ function create() {
     );
     //most of the time we spawn a enemy projectile.
     //but x% of the time (let's say 1% for now) we spawn a powerup. 1% may be too generous.
-    const isPowerup = rollAnNSidedDie(2) == 1;
+    const isPowerup = rollAnNSidedDie(100) == 1;
     if (isPowerup) {
-      console.log("would have been a powerup");
-      // const powerUp = powerUps.create(
-      //   randomBug.x,
-      //   randomBug.y,
-      //   "health-powerup"
-      // );
-      // powerUp.setScale(2.5);
-      // const heartTween = scene.tweens.add({
+      const powerUp = powerUps.create(
+        randomBug.x,
+        randomBug.y,
+        "health-powerup"
+      );
+      powerUp.setScale(2.5).setGravityY(20);
+      //      const heartTween = scene.tweens.add({
       //   targets: powerUp,
       //   x: [100, 300],
       //   ease: "Bounce",
@@ -305,6 +310,13 @@ function create() {
     }
   });
 
+  this.physics.add.collider(gameState.player, powerUps, (player, powerUp) => {
+    powerUp.destroy();
+    if (gameState.healthBar.frame.name > 0) {
+      gameState.healthBar.setFrame(gameState.healthBar.frame.name - 1);
+    }
+  });
+
   // Creates cursor objects to be used in update()
   gameState.cursors = this.input.keyboard.createCursorKeys();
 
@@ -326,6 +338,10 @@ function create() {
       //check if the bug is the first one hit
       if (gameState.activeBug === 0) {
         gameState.activeBug = hitBug;
+        if (hitBug.texture.key == "2" || hitBug.texture.key == "4") {
+          //temp workaround until all images are made
+          hitBug.setFrame(1);
+        }
         hitBug.alpha = 0.5;
       }
       //or, it's not the first hit, so we check for what was hit
@@ -335,6 +351,10 @@ function create() {
         if (oldBug === hitBug) {
           gameState.activeBug = 0;
           hitBug.alpha = 1;
+          if (hitBug.texture.key == "2" || hitBug.texture.key == "4") {
+            //temp workaround until all images are made
+            hitBug.setFrame(0);
+          }
         }
         //otherwise, they hit 2 different bugs, and we need to check to see if their values are equal
         else if (hitBug.texture.key === oldBug.texture.key) {
