@@ -11,9 +11,11 @@ function preload() {
   this.load.image("1024", "assets/1024.png");
   this.load.image("2048", "assets/2048.png");
   this.load.image("platform", "assets/platform.png");
-  this.load.image("codey", "assets/codey.png");
+  this.load.image("codey", "assets/ship.png");
   this.load.image("enemyBullet", "assets/bugPellet.png");
   this.load.image("playerBullets", "assets/bugRepellent.png");
+  this.load.image("background", "assets/background.png");
+  this.load.image("health-powerup", "assets/health-powerup.png");
   this.load.spritesheet("healthBar", "assets/healthbar.png", {
     frameWidth: 42,
     frameHeight: 7,
@@ -57,7 +59,8 @@ const gameOver = (scene) => {
   scene.physics.pause();
   scene.add.text(100, 250, "Game Over. Click to restart", {
     fontSize: "15px",
-    fill: "#000",
+    fill: "#fff",
+    backgroundColor: "#000",
   });
 };
 
@@ -87,12 +90,31 @@ const initialValues = {
 };
 
 const TOP_BUFFER = 50;
+const LEFT_BUFFER = 25;
+const RIGHT_BUFFER = 15;
 
 const gameState = { ...initialValues };
+
+const updateScore = () => {
+  const newScore = gameState.enemies.getChildren().reduce((acc, curr) => {
+    return acc + parseInt(curr.texture.key);
+  }, 0);
+  gameState.sumValueOfEnemies = newScore;
+};
 
 function create() {
   // When gameState.active is true, the game is being played and not over. When gameState.active is false, then it's game over
   gameState.active = true;
+
+  let background = this.add.image(
+    this.cameras.main.width / 2,
+    this.cameras.main.height / 2,
+    "background"
+  );
+  let scaleX = this.cameras.main.width / background.width;
+  let scaleY = this.cameras.main.height / background.height;
+  let scale = Math.max(scaleX, scaleY);
+  background.setScale(scale).setScrollFactor(0);
 
   // When gameState.active is false, the game will listen for a pointerup event and restart when the event happens
   this.input.on("pointerup", () => {
@@ -102,9 +124,21 @@ function create() {
     }
   });
 
+  //create score counter
+  const score = this.add.text(
+    300,
+    10,
+    `Your score: ${gameState.sumValueOfEnemies}`,
+    {
+      fontSize: "15px",
+      fill: "#fff",
+      backgroundColor: "#000",
+    }
+  );
+
   // Creating static platforms
   const platforms = this.physics.add.staticGroup();
-  platforms.create(225, 400, "platform").setScale(1, 0.3).refreshBody();
+  platforms.create(250, 550, "platform").setScale(1.3, 0.3).refreshBody();
 
   gameState.enemies = this.physics.add.group();
   //create 2 rows of 8 enemies with value 4
@@ -133,13 +167,33 @@ function create() {
 
   //create pellets (ew)
   const pellets = this.physics.add.group();
+  const powerUps = this.physics.add.group();
 
-  function genPellet() {
+  function genPellet(scene) {
     let randomBug = Phaser.Utils.Array.GetRandom(
       gameState.enemies.getChildren()
     );
-    const newPellet = pellets.create(randomBug.x, randomBug.y, "enemyBullet");
-    newPellet.setVelocityY(50);
+    //most of the time we spawn a enemy projectile.
+    //but x% of the time (let's say 1% for now) we spawn a powerup. 1% may be too generous.
+    const isPowerup = rollAnNSidedDie(2) == 1;
+    if (isPowerup) {
+      console.log("would have been a powerup");
+      // const powerUp = powerUps.create(
+      //   randomBug.x,
+      //   randomBug.y,
+      //   "health-powerup"
+      // );
+      // powerUp.setScale(2.5);
+      // const heartTween = scene.tweens.add({
+      //   targets: powerUp,
+      //   x: [100, 300],
+      //   ease: "Bounce",
+      //   yoyo: true,
+      // });
+    } else {
+      const newPellet = pellets.create(randomBug.x, randomBug.y, "enemyBullet");
+      newPellet.setVelocityY(50);
+    }
   }
 
   const bottomRowIsEmpty = (yVal, yValOldBug) => {
@@ -165,9 +219,9 @@ function create() {
   };
 
   const findValidXSlot = () => {
-    let slot = RollAnNSidedDie(8);
+    let slot = rollAnNSidedDie(8);
     while (gameState.topRow[slot] != null) {
-      slot = RollAnNSidedDie(8);
+      slot = rollAnNSidedDie(8);
     }
     gameState.topRow[slot] = slot;
 
@@ -197,7 +251,7 @@ function create() {
     maybe 1/3 of the time?
     and the rest of the time it should be within 1 power of 2 of the number that was just destroyed
     //*/
-    let isTwo = RollAnNSidedDie(3);
+    let isTwo = rollAnNSidedDie(3);
     if (isTwo == 1) {
       return 2;
     } else {
@@ -212,7 +266,7 @@ function create() {
     }
   }
 
-  function RollAnNSidedDie(n) {
+  function rollAnNSidedDie(n) {
     const num = Math.floor(Math.random() * n);
     return num;
   }
@@ -223,10 +277,11 @@ function create() {
     callbackScope: this,
     loop: true,
   });
+
   // Uses the physics plugin to create the player
-  gameState.player = this.physics.add.sprite(225, 350, "codey").setScale(0.6);
+  gameState.player = this.physics.add.sprite(225, 450, "codey").setScale(2);
   //set healthBar
-  gameState.healthBar = this.add.image(30, 15, "healthBar", 0);
+  gameState.healthBar = this.add.image(40, 15, "healthBar", 0).setScale(2);
 
   // Create Collider objects
   gameState.player.setCollideWorldBounds(true);
@@ -286,10 +341,11 @@ function create() {
           //they match, so let's get rid of them and spawn double their value, after checking for row fullness
 
           const rowIsEmpty = spawnDoubleBug(hitBug, oldBug);
-
+          updateScore();
+          score.setText(`Your score: ${gameState.sumValueOfEnemies}`);
           //here we have a 100% chance to increase randomSpawnCounter as well as a 33% chance to increase it twice
           gameState.randomspawncounter++;
-          if (RollAnNSidedDie(3) === 0) {
+          if (rollAnNSidedDie(3) === 0) {
             gameState.randomspawncounter++;
           }
           //if the bottom row is now empty, move everything down by 1 row
@@ -366,27 +422,19 @@ function update() {
       .forEach((bug) => (bug.x = bug.x + gameState.enemyVelocity));
     gameState.leftMostBug = sortedEnemies()[0];
     gameState.rightMostBug = sortedEnemies()[sortedEnemies().length - 1];
-    if (gameState.leftMostBug.x < 10 || gameState.rightMostBug.x > 440) {
+    if (
+      gameState.leftMostBug.x < 10 + LEFT_BUFFER ||
+      gameState.rightMostBug.x > 440 - RIGHT_BUFFER
+    ) {
       gameState.enemyVelocity = gameState.enemyVelocity * -1;
     }
-    //darken the background as the game gets more intense; currently disabled bc lazy
-    /*
-            gameState.sumValueOfEnemies = gameState.enemies.getChildren().map(function (bug){return parseInt(bug.texture.key, 10)}).reduce((a, b) => a+b);
-              switch (gameState.sumValueOfEnemies){
-                case (gameState.sumValueOfEnemies < 120):
-                  break;
-                  case (gameState.sumValueOfEnemies >= 120 && gameState.sumValueOfEnemies < 800):
-                    this.cameras.main.backgroundColor = "a3cfe2";
-                    break;
-              }        */
   }
 }
 
 const config = {
   type: Phaser.AUTO,
   width: 450,
-  height: 450,
-  backgroundColor: "b9eaff",
+  height: 550,
   physics: {
     default: "arcade",
     arcade: {
