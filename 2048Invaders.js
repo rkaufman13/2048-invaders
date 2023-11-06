@@ -1,19 +1,23 @@
 function preload() {
-  this.load.image("2", "2.png");
-  this.load.image("4", "4.png");
-  this.load.image("8", "8.png");
-  this.load.image("16", "16.png");
-  this.load.image("32", "32.png");
-  this.load.image("64", "64.png");
-  this.load.image("128", "128.png");
-  this.load.image("256", "256.png");
-  this.load.image("512", "512.png");
-  this.load.image("1024", "1024.png");
-  this.load.image("2048", "2048.png");
-  this.load.image("platform", "platform.png");
-  this.load.image("codey", "codey.png");
-  this.load.image("enemyBullet", "bugPellet.png");
-  this.load.image("playerBullets", "bugRepellent.png");
+  this.load.image("2", "assets/2.png");
+  this.load.image("4", "assets/4.png");
+  this.load.image("8", "assets/8.png");
+  this.load.image("16", "assets/16.png");
+  this.load.image("32", "assets/32.png");
+  this.load.image("64", "assets/64.png");
+  this.load.image("128", "assets/128.png");
+  this.load.image("256", "assets/256.png");
+  this.load.image("512", "assets/512.png");
+  this.load.image("1024", "assets/1024.png");
+  this.load.image("2048", "assets/2048.png");
+  this.load.image("platform", "assets/platform.png");
+  this.load.image("codey", "assets/codey.png");
+  this.load.image("enemyBullet", "assets/bugPellet.png");
+  this.load.image("playerBullets", "assets/bugRepellent.png");
+  this.load.spritesheet("healthBar", "assets/healthbar.png", {
+    frameWidth: 42,
+    frameHeight: 7,
+  });
 }
 
 // Helper Methods below:
@@ -82,6 +86,8 @@ const initialValues = {
   scale: 0.5,
 };
 
+const TOP_BUFFER = 50;
+
 const gameState = { ...initialValues };
 
 function create() {
@@ -104,8 +110,8 @@ function create() {
   //create 2 rows of 8 enemies with value 4
   for (let xVal = 1; xVal < 9; xVal++) {
     for (let yVal = 1; yVal <= 2; yVal++) {
-      const enemy = gameState.enemies
-        .create(50 * xVal, 50 * yVal, "4")
+      gameState.enemies
+        .create(50 * xVal, 50 * yVal + TOP_BUFFER, "4")
         .setScale(gameState.scale)
         .setGravityY(-200);
     }
@@ -113,8 +119,8 @@ function create() {
   //create 2 rows of 8 enemies with value 2
   for (let xVal = 1; xVal < 9; xVal++) {
     for (let yVal = 3; yVal <= 4; yVal++) {
-      const enemy = gameState.enemies
-        .create(50 * xVal, 50 * yVal, "2")
+      gameState.enemies
+        .create(50 * xVal, 50 * yVal + TOP_BUFFER, "2")
         .setScale(gameState.scale)
         .setGravityY(-200);
     }
@@ -136,7 +142,7 @@ function create() {
     newPellet.setVelocityY(50);
   }
 
-  const checkForBottomRowEmpty = (yVal, yValOldBug) => {
+  const bottomRowIsEmpty = (yVal, yValOldBug) => {
     const sortedEnemies = sortedEnemiesY();
     const lowestEnemyY = Math.max(yVal, yValOldBug);
     return (
@@ -160,18 +166,11 @@ function create() {
 
   const findValidXSlot = () => {
     let slot = RollAnNSidedDie(8);
-    console.log(
-      `outside while loop: slot: ${slot}; gameState.toprow.slot: ${gameState.topRow[slot]}`
-    );
-
     while (gameState.topRow[slot] != null) {
-      console.log(
-        `inside while loop: slot: ${slot}; gameState.toprow.slot: ${gameState.topRow[slot]}`
-      );
       slot = RollAnNSidedDie(8);
     }
     gameState.topRow[slot] = slot;
-    console.log(gameState.topRow);
+
     return slot * 50 + sortedEnemies()[0].x;
   };
 
@@ -182,7 +181,7 @@ function create() {
     const xVal = hitBug.x;
     hitBug.destroy();
     oldBug.destroy();
-    const rowIsEmpty = checkForBottomRowEmpty(yVal, yValOldBug);
+    const rowIsEmpty = bottomRowIsEmpty(yVal, yValOldBug);
     gameState.activeBug = 0;
     gameState.enemies
       .create(xVal, yVal, doublebug)
@@ -194,8 +193,23 @@ function create() {
   //generate a random bug within the parameters we want
   function getRandBug(bug) {
     let basenum = bug.texture.key;
-    let newnum = Math.pow(2, Math.ceil(Math.random() * Math.log2(basenum)));
-    return newnum;
+    /*newnum should occasionally be 2
+    maybe 1/3 of the time?
+    and the rest of the time it should be within 1 power of 2 of the number that was just destroyed
+    //*/
+    let isTwo = RollAnNSidedDie(3);
+    if (isTwo == 1) {
+      return 2;
+    } else {
+      let choices = [basenum / 2, basenum / 2, basenum, basenum * 2];
+      let choice = Math.floor(Math.random() * choices.length);
+
+      while (choices[choice] < 2 || choices[choice] > 2048) {
+        choice = Math.floor(Math.random() * choices.length);
+      }
+
+      return choices[choice];
+    }
   }
 
   function RollAnNSidedDie(n) {
@@ -211,6 +225,8 @@ function create() {
   });
   // Uses the physics plugin to create the player
   gameState.player = this.physics.add.sprite(225, 350, "codey").setScale(0.6);
+  //set healthBar
+  gameState.healthBar = this.add.image(30, 15, "healthBar", 0);
 
   // Create Collider objects
   gameState.player.setCollideWorldBounds(true);
@@ -223,10 +239,16 @@ function create() {
   });
 
   //comment out the enemy pellet collider below to test the game without dying
-  // this.physics.add.collider(pellets, gameState.player, () => {
-  //   //todo give the player HP instead of immediate game over
-  //   gameOver(this);
-  // });
+  this.physics.add.collider(pellets, gameState.player, (player, pellet) => {
+    //the callback function passes in the params BACKWARDS
+    pellet.destroy();
+    if (gameState.healthBar.frame.name < 3) {
+      gameState.healthBar.setFrame(gameState.healthBar.frame.name + 1);
+    } else {
+      gameState.healthBar.setFrame(4);
+      gameOver(this);
+    }
+  });
 
   // Creates cursor objects to be used in update()
   gameState.cursors = this.input.keyboard.createCursorKeys();
@@ -278,14 +300,14 @@ function create() {
           }
 
           //now, let's spawn an extra "jerk" number at the top at a preset interval
-          if (gameState.randomspawncounter >= 0) {
+          if (gameState.randomspawncounter >= 2) {
             //spawn another number
             if (topRowHasSpace()) {
               yVal = sortedEnemiesY()[0].y;
               //find valid x slot
               xVal = findValidXSlot();
 
-              const newBug = gameState.enemies
+              gameState.enemies
                 .create(xVal, yVal, getRandBug(hitBug))
                 .setScale(gameState.scale)
                 .setGravityY(-200);
@@ -294,7 +316,7 @@ function create() {
               const xVal = findValidXSlot();
 
               const yVal = sortedEnemiesY()[0].y - 50;
-              const newBug = gameState.enemies
+              gameState.enemies
                 .create(xVal, yVal, getRandBug(hitBug))
                 .setScale(gameState.scale)
                 .setGravityY(-200);
@@ -363,7 +385,7 @@ function update() {
 const config = {
   type: Phaser.AUTO,
   width: 450,
-  height: 400,
+  height: 450,
   backgroundColor: "b9eaff",
   physics: {
     default: "arcade",
