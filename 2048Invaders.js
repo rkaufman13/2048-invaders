@@ -19,7 +19,10 @@ function preload() {
   this.load.image("platform", "assets/platform.png");
   this.load.image("codey", "assets/ship.png");
   this.load.image("enemyBullet", "assets/bugPellet.png");
-  this.load.image("playerBullets", "assets/bugRepellent.png");
+  this.load.spritesheet("playerBullets", "assets/basicbullet.png", {
+    frameWidth: 38,
+    frameHeight: 20,
+  });
   this.load.image("background", "assets/background.png");
   this.load.image("health-powerup", "assets/health-powerup.png");
   this.load.spritesheet("healthBar", "assets/healthbar.png", {
@@ -79,6 +82,7 @@ const youWin = (scene) => {
 
 const initialValues = {
   enemyVelocity: 0.5,
+  powerUpVelocity: 1,
   activeBug: 0,
   randomspawncounter: 0,
   topRow: {
@@ -173,7 +177,8 @@ function create() {
 
   //create pellets (ew)
   const pellets = this.physics.add.group();
-  const powerUps = this.physics.add.group();
+  //create powerups
+  gameState.powerUps = this.physics.add.group();
 
   function genPellet(scene) {
     let randomBug = Phaser.Utils.Array.GetRandom(
@@ -183,18 +188,12 @@ function create() {
     //but x% of the time (let's say 1% for now) we spawn a powerup. 1% may be too generous.
     const isPowerup = rollAnNSidedDie(100) == 1;
     if (isPowerup) {
-      const powerUp = powerUps.create(
+      const powerUp = gameState.powerUps.create(
         randomBug.x,
         randomBug.y,
         "health-powerup"
       );
-      powerUp.setScale(2.5).setGravityY(20);
-      //      const heartTween = scene.tweens.add({
-      //   targets: powerUp,
-      //   x: [100, 300],
-      //   ease: "Bounce",
-      //   yoyo: true,
-      // });
+      powerUp.setScale(2.5);
     } else {
       const newPellet = pellets.create(randomBug.x, randomBug.y, "enemyBullet");
       newPellet.setVelocityY(50);
@@ -279,6 +278,7 @@ function create() {
   gameState.pelletsLoop = this.time.addEvent({
     delay: 1000,
     callback: genPellet,
+    args: [this],
     callbackScope: this,
     loop: true,
   });
@@ -310,12 +310,16 @@ function create() {
     }
   });
 
-  this.physics.add.collider(gameState.player, powerUps, (player, powerUp) => {
-    powerUp.destroy();
-    if (gameState.healthBar.frame.name > 0) {
-      gameState.healthBar.setFrame(gameState.healthBar.frame.name - 1);
+  this.physics.add.collider(
+    gameState.player,
+    gameState.powerUps,
+    (player, powerUp) => {
+      powerUp.destroy();
+      if (gameState.healthBar.frame.name > 0) {
+        gameState.healthBar.setFrame(gameState.healthBar.frame.name - 1);
+      }
     }
-  });
+  );
 
   // Creates cursor objects to be used in update()
   gameState.cursors = this.input.keyboard.createCursorKeys();
@@ -416,7 +420,7 @@ function create() {
   );
 }
 
-function update() {
+function update(time, delta) {
   if (gameState.active) {
     // If the game is active, then players can control the ship
     if (gameState.cursors.left.isDown) {
@@ -427,12 +431,24 @@ function update() {
       gameState.player.setVelocityX(0);
     }
 
+    this.anims.create({
+      key: "shootPlayerBullet",
+      frameRate: 7,
+      frames: this.anims.generateFrameNumbers("playerBullets", {
+        start: 0,
+        end: 1,
+      }),
+      repeat: -1,
+    });
+
     // Fire at the enemies
     if (Phaser.Input.Keyboard.JustDown(gameState.cursors.space)) {
-      gameState.playerBullets
+      const bullet = gameState.playerBullets
         .create(gameState.player.x, gameState.player.y, "playerBullets")
         .setGravityY(-400)
         .setVelocityY(-300);
+      bullet.setScale(0.75);
+      bullet.play("shootPlayerBullet");
     }
 
     // Add logic for winning condition and enemy movements below:
@@ -449,6 +465,9 @@ function update() {
       gameState.enemyVelocity = gameState.enemyVelocity * -1;
     }
   }
+  gameState.powerUps.getChildren().forEach((powerup) => {
+    powerup.setVelocityY(80);
+  });
 }
 
 const config = {
