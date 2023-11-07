@@ -1,63 +1,18 @@
-function preload() {
-  this.load.spritesheet("2", "assets/2.png", {
-    frameWidth: 83,
-    frameHeight: 90,
-  });
-  this.load.spritesheet("4", "assets/4.png", {
-    frameWidth: 83,
-    frameHeight: 90,
-  });
-  this.load.image("8", "assets/8.png");
-  this.load.image("16", "assets/16.png");
-  this.load.image("32", "assets/32.png");
-  this.load.image("64", "assets/64.png");
-  this.load.image("128", "assets/128.png");
-  this.load.image("256", "assets/256.png");
-  this.load.image("512", "assets/512.png");
-  this.load.image("1024", "assets/1024.png");
-  this.load.image("2048", "assets/2048.png");
-  this.load.image("platform", "assets/platform.png");
-  this.load.image("codey", "assets/ship.png");
-  this.load.image("enemyBullet", "assets/bugPellet.png");
-  this.load.image("playerBullets", "assets/bugRepellent.png");
-  this.load.image("background", "assets/background.png");
-  this.load.image("health-powerup", "assets/health-powerup.png");
-  this.load.spritesheet("healthBar", "assets/healthbar.png", {
-    frameWidth: 42,
-    frameHeight: 7,
-  });
-}
+import { preload } from "./preload.js";
+import {
+  sortedEnemies,
+  sortedEnemiesY,
+  rollAnNSidedDie,
+} from "./helpermethods.js";
 
-// Helper Methods below:
-// sortedEnemies() returns an array of enemy sprites sorted by their x coordinate
-function sortedEnemies() {
-  const orderedByXCoord = gameState.enemies
-    .getChildren()
-    .sort((a, b) => a.x - b.x);
-  return orderedByXCoord;
-}
-function sortedEnemiesY() {
-  const orderedByYCoord = gameState.enemies
-    .getChildren()
-    .sort((a, b) => a.y - b.y);
-  return orderedByYCoord;
-}
+import {
+  initialValues,
+  TOP_BUFFER,
+  LEFT_BUFFER,
+  RIGHT_BUFFER,
+} from "./constants.js";
 
-function sortedEnemiesRows() {
-  const sortedByRows = gameState.enemies.getChildren().sort(function (a, b) {
-    if (a.y === b.y) {
-      return a.x - b.x;
-    }
-    return a.y - b.y;
-  });
-
-  return sortedByRows;
-}
-// numOfTotalEnemies() returns the number of total enemies
-function numOfTotalEnemies() {
-  const totalEnemies = gameState.enemies.getChildren().length;
-  return totalEnemies;
-}
+const gameState = { ...initialValues };
 
 const gameOver = (scene) => {
   gameState.active = false;
@@ -75,37 +30,6 @@ const youWin = (scene) => {
   gameState.pelletsLoop.destroy();
   scene.physics.pause();
   scene.add.text(200, 300, "You Win", { fontSize: "15px", fill: "#000" });
-};
-
-const initialValues = {
-  enemyVelocity: 0.5,
-  activeBug: 0,
-  randomspawncounter: 0,
-  topRow: {
-    0: null,
-    1: null,
-    2: null,
-    3: null,
-    4: null,
-    5: null,
-    6: null,
-    7: null,
-  },
-  sumValueOfEnemies: 0,
-  scale: 0.5,
-};
-
-const TOP_BUFFER = 50;
-const LEFT_BUFFER = 25;
-const RIGHT_BUFFER = 15;
-
-const gameState = { ...initialValues };
-
-const updateScore = () => {
-  const newScore = gameState.enemies.getChildren().reduce((acc, curr) => {
-    return acc + parseInt(curr.texture.key);
-  }, 0);
-  gameState.sumValueOfEnemies = newScore;
 };
 
 function create() {
@@ -173,7 +97,8 @@ function create() {
 
   //create pellets (ew)
   const pellets = this.physics.add.group();
-  const powerUps = this.physics.add.group();
+  //create powerups
+  gameState.powerUps = this.physics.add.group();
 
   function genPellet(scene) {
     let randomBug = Phaser.Utils.Array.GetRandom(
@@ -183,18 +108,12 @@ function create() {
     //but x% of the time (let's say 1% for now) we spawn a powerup. 1% may be too generous.
     const isPowerup = rollAnNSidedDie(100) == 1;
     if (isPowerup) {
-      const powerUp = powerUps.create(
+      const powerUp = gameState.powerUps.create(
         randomBug.x,
         randomBug.y,
         "health-powerup"
       );
-      powerUp.setScale(2.5).setGravityY(20);
-      //      const heartTween = scene.tweens.add({
-      //   targets: powerUp,
-      //   x: [100, 300],
-      //   ease: "Bounce",
-      //   yoyo: true,
-      // });
+      powerUp.setScale(2.5);
     } else {
       const newPellet = pellets.create(randomBug.x, randomBug.y, "enemyBullet");
       newPellet.setVelocityY(50);
@@ -202,7 +121,7 @@ function create() {
   }
 
   const bottomRowIsEmpty = (yVal, yValOldBug) => {
-    const sortedEnemies = sortedEnemiesY();
+    const sortedEnemies = sortedEnemiesY(gameState);
     const lowestEnemyY = Math.max(yVal, yValOldBug);
     return (
       sortedEnemies.filter((enemy) => enemy.y === lowestEnemyY).length == 0
@@ -230,7 +149,7 @@ function create() {
     }
     gameState.topRow[slot] = slot;
 
-    return slot * 50 + sortedEnemies()[0].x;
+    return slot * 50 + sortedEnemies(gameState)[0].x;
   };
 
   const spawnDoubleBug = (hitBug, oldBug) => {
@@ -271,14 +190,10 @@ function create() {
     }
   }
 
-  function rollAnNSidedDie(n) {
-    const num = Math.floor(Math.random() * n);
-    return num;
-  }
-
   gameState.pelletsLoop = this.time.addEvent({
     delay: 1000,
     callback: genPellet,
+    args: [this],
     callbackScope: this,
     loop: true,
   });
@@ -293,6 +208,9 @@ function create() {
   this.physics.add.collider(gameState.player, platforms);
   this.physics.add.collider(pellets, platforms, function (pellet) {
     pellet.destroy();
+  });
+  this.physics.add.collider(gameState.powerUps, platforms, (powerUp) => {
+    powerUp.destroy();
   });
   this.physics.add.collider(gameState.enemies.getChildren(), platforms, () => {
     gameOver(this);
@@ -310,12 +228,16 @@ function create() {
     }
   });
 
-  this.physics.add.collider(gameState.player, powerUps, (player, powerUp) => {
-    powerUp.destroy();
-    if (gameState.healthBar.frame.name > 0) {
-      gameState.healthBar.setFrame(gameState.healthBar.frame.name - 1);
+  this.physics.add.collider(
+    gameState.player,
+    gameState.powerUps,
+    (player, powerUp) => {
+      powerUp.destroy();
+      if (gameState.healthBar.frame.name > 0) {
+        gameState.healthBar.setFrame(gameState.healthBar.frame.name - 1);
+      }
     }
-  });
+  );
 
   // Creates cursor objects to be used in update()
   gameState.cursors = this.input.keyboard.createCursorKeys();
@@ -346,7 +268,7 @@ function create() {
       }
       //or, it's not the first hit, so we check for what was hit
       else {
-        oldBug = gameState.activeBug;
+        const oldBug = gameState.activeBug;
         //make sure they didn't hit the same bug twice, if they do, reset
         if (oldBug === hitBug) {
           gameState.activeBug = 0;
@@ -361,7 +283,7 @@ function create() {
           //they match, so let's get rid of them and spawn double their value, after checking for row fullness
 
           const rowIsEmpty = spawnDoubleBug(hitBug, oldBug);
-          updateScore();
+          updateScore(gameState);
           score.setText(`Your score: ${gameState.sumValueOfEnemies}`);
           //here we have a 100% chance to increase randomSpawnCounter as well as a 33% chance to increase it twice
           gameState.randomspawncounter++;
@@ -379,9 +301,9 @@ function create() {
           if (gameState.randomspawncounter >= 2) {
             //spawn another number
             if (topRowHasSpace()) {
-              yVal = sortedEnemiesY()[0].y;
+              const yVal = sortedEnemiesY(gameState)[0].y;
               //find valid x slot
-              xVal = findValidXSlot();
+              const xVal = findValidXSlot();
 
               gameState.enemies
                 .create(xVal, yVal, getRandBug(hitBug))
@@ -391,7 +313,7 @@ function create() {
               //spawn bug in new row
               const xVal = findValidXSlot();
 
-              const yVal = sortedEnemiesY()[0].y - 50;
+              const yVal = sortedEnemiesY(gameState)[0].y - 50;
               gameState.enemies
                 .create(xVal, yVal, getRandBug(hitBug))
                 .setScale(gameState.scale)
@@ -416,7 +338,7 @@ function create() {
   );
 }
 
-function update() {
+function update(time, delta) {
   if (gameState.active) {
     // If the game is active, then players can control the ship
     if (gameState.cursors.left.isDown) {
@@ -427,12 +349,24 @@ function update() {
       gameState.player.setVelocityX(0);
     }
 
+    this.anims.create({
+      key: "shootPlayerBullet",
+      frameRate: 7,
+      frames: this.anims.generateFrameNumbers("playerBullets", {
+        start: 0,
+        end: 1,
+      }),
+      repeat: -1,
+    });
+
     // Fire at the enemies
     if (Phaser.Input.Keyboard.JustDown(gameState.cursors.space)) {
-      gameState.playerBullets
+      const bullet = gameState.playerBullets
         .create(gameState.player.x, gameState.player.y, "playerBullets")
         .setGravityY(-400)
         .setVelocityY(-300);
+      bullet.setScale(0.75);
+      bullet.play("shootPlayerBullet");
     }
 
     // Add logic for winning condition and enemy movements below:
@@ -440,8 +374,9 @@ function update() {
     gameState.enemies
       .getChildren()
       .forEach((bug) => (bug.x = bug.x + gameState.enemyVelocity));
-    gameState.leftMostBug = sortedEnemies()[0];
-    gameState.rightMostBug = sortedEnemies()[sortedEnemies().length - 1];
+    gameState.leftMostBug = sortedEnemies(gameState)[0];
+    gameState.rightMostBug =
+      sortedEnemies(gameState)[sortedEnemies(gameState).length - 1];
     if (
       gameState.leftMostBug.x < 10 + LEFT_BUFFER ||
       gameState.rightMostBug.x > 440 - RIGHT_BUFFER
@@ -449,6 +384,9 @@ function update() {
       gameState.enemyVelocity = gameState.enemyVelocity * -1;
     }
   }
+  gameState.powerUps.getChildren().forEach((powerup) => {
+    powerup.setVelocityY(80);
+  });
 }
 
 const config = {
