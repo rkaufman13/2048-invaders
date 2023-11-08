@@ -3,6 +3,12 @@ import {
   sortedEnemies,
   sortedEnemiesY,
   rollAnNSidedDie,
+  findValidXSlot,
+  updateScore,
+  powerOf2,
+  topRowHasSpace,
+  spawnDoubleBug,
+  createStartingEnemies,
 } from "./helpermethods.js";
 
 import {
@@ -13,6 +19,35 @@ import {
 } from "./constants.js";
 
 const gameState = { ...initialValues };
+
+function getRandBug(bug) {
+  let basenum = bug.texture.key;
+  /*newnum should occasionally be 2
+  maybe 1/3 of the time?
+  and the rest of the time it should be within 1 power of 2 of the number that was just destroyed
+  //*/
+  let isTwo = rollAnNSidedDie(3);
+  if (isTwo == 1) {
+    return 2;
+  } else {
+    let choices = [basenum / 2, basenum / 2, basenum, basenum * 2];
+    let choice = Math.floor(Math.random() * choices.length);
+
+    while (choices[choice] < 2 || choices[choice] > 2048) {
+      choice = Math.floor(Math.random() * choices.length);
+    }
+
+    return choices[choice];
+  }
+}
+
+const spawnBug = (xVal, yVal, bugVal) => {
+  gameState.activeBug = 0;
+  gameState.enemies
+    .create(xVal, yVal, bugVal)
+    .setScale(gameState.scale)
+    .setGravityY(-200);
+};
 
 const gameOver = (scene) => {
   gameState.active = false;
@@ -71,24 +106,12 @@ function create() {
   platforms.create(250, 550, "platform").setScale(1.3, 0.3).refreshBody();
 
   gameState.enemies = this.physics.add.group();
+
   //create 2 rows of 8 enemies with value 4
-  for (let xVal = 1; xVal < 9; xVal++) {
-    for (let yVal = 1; yVal <= 2; yVal++) {
-      gameState.enemies
-        .create(50 * xVal, 50 * yVal + TOP_BUFFER, "4", 0)
-        .setScale(gameState.scale)
-        .setGravityY(-200);
-    }
-  }
+  createStartingEnemies(gameState, "4", 1, 2);
+
   //create 2 rows of 8 enemies with value 2
-  for (let xVal = 1; xVal < 9; xVal++) {
-    for (let yVal = 3; yVal <= 4; yVal++) {
-      gameState.enemies
-        .create(50 * xVal, 50 * yVal + TOP_BUFFER, "2", 0)
-        .setScale(gameState.scale)
-        .setGravityY(-200);
-    }
-  }
+  createStartingEnemies(gameState, "2", 3, 4);
 
   //add some properties to each enemy
   gameState.enemies.getChildren().forEach((enemy) => {
@@ -99,6 +122,8 @@ function create() {
   const pellets = this.physics.add.group();
   //create powerups
   gameState.powerUps = this.physics.add.group();
+
+  gameState.megaPowerUps = this.physics.add.group();
 
   function genPellet(scene) {
     let randomBug = Phaser.Utils.Array.GetRandom(
@@ -120,75 +145,7 @@ function create() {
     }
   }
 
-  const bottomRowIsEmpty = (yVal, yValOldBug) => {
-    const sortedEnemies = sortedEnemiesY(gameState);
-    const lowestEnemyY = Math.max(yVal, yValOldBug);
-    return (
-      sortedEnemies.filter((enemy) => enemy.y === lowestEnemyY).length == 0
-    );
-  };
-
-  const topRowHasSpace = () => {
-    if (
-      Object.values(gameState.topRow).filter((slot) => slot != null).length == 8
-    ) {
-      const newTopRow = Object.fromEntries(
-        Object.keys(gameState.topRow).map((key) => [key, null])
-      );
-      gameState.topRow = newTopRow;
-    }
-    return (
-      Object.values(gameState.topRow).filter((slot) => slot != null).length >= 1
-    );
-  };
-
-  const findValidXSlot = () => {
-    let slot = rollAnNSidedDie(8);
-    while (gameState.topRow[slot] != null) {
-      slot = rollAnNSidedDie(8);
-    }
-    gameState.topRow[slot] = slot;
-
-    return slot * 50 + sortedEnemies(gameState)[0].x;
-  };
-
-  const spawnDoubleBug = (hitBug, oldBug) => {
-    const yVal = Math.ceil(hitBug.y / 10) * 10;
-    const yValOldBug = Math.ceil(oldBug.y / 10) * 10;
-    const doublebug = hitBug.texture.key * 2;
-    const xVal = hitBug.x;
-    hitBug.destroy();
-    oldBug.destroy();
-    const rowIsEmpty = bottomRowIsEmpty(yVal, yValOldBug);
-    gameState.activeBug = 0;
-    gameState.enemies
-      .create(xVal, yVal, doublebug)
-      .setScale(gameState.scale)
-      .setGravityY(-200);
-    return rowIsEmpty;
-  };
-
   //generate a random bug within the parameters we want
-  function getRandBug(bug) {
-    let basenum = bug.texture.key;
-    /*newnum should occasionally be 2
-    maybe 1/3 of the time?
-    and the rest of the time it should be within 1 power of 2 of the number that was just destroyed
-    //*/
-    let isTwo = rollAnNSidedDie(3);
-    if (isTwo == 1) {
-      return 2;
-    } else {
-      let choices = [basenum / 2, basenum / 2, basenum, basenum * 2];
-      let choice = Math.floor(Math.random() * choices.length);
-
-      while (choices[choice] < 2 || choices[choice] > 2048) {
-        choice = Math.floor(Math.random() * choices.length);
-      }
-
-      return choices[choice];
-    }
-  }
 
   gameState.pelletsLoop = this.time.addEvent({
     delay: 1000,
@@ -199,7 +156,7 @@ function create() {
   });
 
   // Uses the physics plugin to create the player
-  gameState.player = this.physics.add.sprite(225, 450, "codey").setScale(2);
+  gameState.player = this.physics.add.sprite(225, 475, "codey").setScale(2);
   //set healthBar
   gameState.healthBar = this.add.image(40, 15, "healthBar", 0).setScale(2);
 
@@ -244,101 +201,153 @@ function create() {
 
   gameState.playerBullets = this.physics.add.group();
 
+  const mainGameLoop = (hitBug, repellent) => {
+    //get rid of the pellet and stop the enemy from moving backward
+    repellent.destroy();
+    hitBug.setVelocityY(0);
+
+    //check if you won the game by hitting the 2048 tile
+    if (hitBug.texture.key === "2048") {
+      youWin(scene);
+    }
+    //check if the bug is the first one hit
+    if (gameState.activeBug === 0) {
+      gameState.activeBug = hitBug;
+      if (hitBug.texture.key == "2" || hitBug.texture.key == "4") {
+        //temp workaround until all images are made
+        hitBug.setFrame(1);
+      }
+      hitBug.alpha = 0.5;
+    }
+    //or, it's not the first hit, so we check for what was hit
+    else {
+      const oldBug = gameState.activeBug;
+      //make sure they didn't hit the same bug twice, if they do, reset
+      if (oldBug === hitBug) {
+        gameState.activeBug = 0;
+        hitBug.alpha = 1;
+        if (hitBug.texture.key == "2" || hitBug.texture.key == "4") {
+          //temp workaround until all images are made
+          hitBug.setFrame(0);
+        }
+      }
+      //otherwise, they hit 2 different bugs, and we need to check to see if their values are equal
+      else if (hitBug.texture.key === oldBug.texture.key) {
+        //they match, so let's get rid of them and spawn double their value, after checking for row fullness
+
+        const rowIsEmpty = spawnDoubleBug(hitBug, oldBug, gameState);
+
+        updateScore(gameState);
+        score.setText(`Your score: ${gameState.sumValueOfEnemies}`);
+        //here we have a 100% chance to increase randomSpawnCounter as well as a 33% chance to increase it twice
+        gameState.randomspawncounter++;
+        if (rollAnNSidedDie(3) === 0) {
+          gameState.randomspawncounter++;
+        }
+        //if the bottom row is now empty, move everything down by 1 row
+        if (rowIsEmpty) {
+          gameState.enemies.getChildren().forEach((bug) => {
+            bug.y = bug.y + 50;
+          });
+        }
+
+        //now, let's spawn an extra "jerk" number at the top at a preset interval
+        if (gameState.randomspawncounter >= 2) {
+          //spawn another number
+          if (topRowHasSpace(gameState)) {
+            const yVal = sortedEnemiesY(gameState)[0].y;
+            //find valid x slot
+            const xVal = findValidXSlot(gameState);
+
+            gameState.enemies
+              .create(xVal, yVal, getRandBug(hitBug))
+              .setScale(gameState.scale)
+              .setGravityY(-200);
+          } else {
+            //spawn bug in new row
+            const xVal = findValidXSlot(gameState);
+
+            const yVal = sortedEnemiesY(gameState)[0].y - 50;
+            gameState.enemies
+              .create(xVal, yVal, getRandBug(hitBug))
+              .setScale(gameState.scale)
+              .setGravityY(-200);
+
+            gameState.enemies
+              .getChildren()
+              .forEach((bug) => (bug.y = bug.y + 10));
+          }
+          gameState.randomspawncounter = 0;
+        }
+      }
+
+      //otherwise, they hit two different bugs but NOT ones that match, so we reset
+      else {
+        gameState.activeBug = hitBug;
+        hitBug.alpha = 0.5;
+        oldBug.alpha = 1;
+      }
+    }
+  };
+
+  const powerUpLoop = (hitBug, repellent, scene) => {
+    repellent.destroy();
+    hitBug.setVelocityY(0);
+    const hitBugX = hitBug.x;
+    const hitBugY = hitBug.y;
+    const hitBugValue = hitBug.texture.key;
+
+    const matchingEnemies = gameState.enemies
+      .getChildren()
+      .filter((enemy) => enemy.texture.key == hitBugValue);
+
+    const matchingEnemiesValues = matchingEnemies
+      .map((enemy) => parseInt(enemy.texture.key))
+      .reduce((acc, curr) => acc + curr);
+    let newBugValue;
+    for (let i = matchingEnemiesValues; i >= 2; i--) {
+      if (powerOf2(i)) {
+        newBugValue = i;
+        break;
+      }
+    }
+
+    matchingEnemies.forEach((enemy) => {
+      const enemyTween = scene.tweens.add({
+        //this is insane
+        targets: enemy,
+        x: hitBugX,
+        y: hitBugY,
+        duration: 200,
+        repeat: 0,
+        onComplete: () => {
+          enemy.destroy();
+        },
+      });
+    });
+
+    spawnBug(hitBugX, hitBugY, newBugValue);
+  };
+
   //main game loop
   this.physics.add.collider(
     gameState.enemies,
     gameState.playerBullets,
     (hitBug, repellent) => {
-      //get rid of the pellet and stop the enemy from moving backward
-      repellent.destroy();
-      hitBug.setVelocityY(0);
-
-      //check if you won the game by hitting the 2048 tile
-      if (hitBug.texture.key === "2048") {
-        youWin(scene);
-      }
-      //check if the bug is the first one hit
-      if (gameState.activeBug === 0) {
-        gameState.activeBug = hitBug;
-        if (hitBug.texture.key == "2" || hitBug.texture.key == "4") {
-          //temp workaround until all images are made
-          hitBug.setFrame(1);
-        }
-        hitBug.alpha = 0.5;
-      }
-      //or, it's not the first hit, so we check for what was hit
-      else {
-        const oldBug = gameState.activeBug;
-        //make sure they didn't hit the same bug twice, if they do, reset
-        if (oldBug === hitBug) {
-          gameState.activeBug = 0;
-          hitBug.alpha = 1;
-          if (hitBug.texture.key == "2" || hitBug.texture.key == "4") {
-            //temp workaround until all images are made
-            hitBug.setFrame(0);
-          }
-        }
-        //otherwise, they hit 2 different bugs, and we need to check to see if their values are equal
-        else if (hitBug.texture.key === oldBug.texture.key) {
-          //they match, so let's get rid of them and spawn double their value, after checking for row fullness
-
-          const rowIsEmpty = spawnDoubleBug(hitBug, oldBug);
-          updateScore(gameState);
-          score.setText(`Your score: ${gameState.sumValueOfEnemies}`);
-          //here we have a 100% chance to increase randomSpawnCounter as well as a 33% chance to increase it twice
-          gameState.randomspawncounter++;
-          if (rollAnNSidedDie(3) === 0) {
-            gameState.randomspawncounter++;
-          }
-          //if the bottom row is now empty, move everything down by 1 row
-          if (rowIsEmpty) {
-            gameState.enemies.getChildren().forEach((bug) => {
-              bug.y = bug.y + 50;
-            });
-          }
-
-          //now, let's spawn an extra "jerk" number at the top at a preset interval
-          if (gameState.randomspawncounter >= 2) {
-            //spawn another number
-            if (topRowHasSpace()) {
-              const yVal = sortedEnemiesY(gameState)[0].y;
-              //find valid x slot
-              const xVal = findValidXSlot();
-
-              gameState.enemies
-                .create(xVal, yVal, getRandBug(hitBug))
-                .setScale(gameState.scale)
-                .setGravityY(-200);
-            } else {
-              //spawn bug in new row
-              const xVal = findValidXSlot();
-
-              const yVal = sortedEnemiesY(gameState)[0].y - 50;
-              gameState.enemies
-                .create(xVal, yVal, getRandBug(hitBug))
-                .setScale(gameState.scale)
-                .setGravityY(-200);
-
-              gameState.enemies
-                .getChildren()
-                .forEach((bug) => (bug.y = bug.y + 10));
-            }
-            gameState.randomspawncounter = 0;
-          }
-        }
-
-        //otherwise, they hit two different bugs but NOT ones that match, so we reset
-        else {
-          gameState.activeBug = hitBug;
-          hitBug.alpha = 0.5;
-          oldBug.alpha = 1;
-        }
-      }
+      mainGameLoop(hitBug, repellent);
     }
   );
+
+  // this.physics.add.collider(
+  //   gameState.enemies,
+  //   gameState.megaPowerUp,
+  //   (enemy, megaPowerUp) => {
+  //     powerUpLoop(enemy, megaPowerUp);
+  //   }
+  // );
 }
 
-function update(time, delta) {
+function update() {
   if (gameState.active) {
     // If the game is active, then players can control the ship
     if (gameState.cursors.left.isDown) {
