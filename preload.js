@@ -7,7 +7,10 @@ export function preload() {
     frameWidth: 83,
     frameHeight: 90,
   });
-  this.load.image("8", "assets/8.png");
+  this.load.spritesheet("8", "assets/8.png", {
+    frameWidth: 83,
+    frameHeight: 90,
+  });
   this.load.image("16", "assets/16.png");
   this.load.image("32", "assets/32.png");
   this.load.image("64", "assets/64.png");

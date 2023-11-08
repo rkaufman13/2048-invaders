@@ -11,12 +11,7 @@ import {
   createStartingEnemies,
 } from "./helpermethods.js";
 
-import {
-  initialValues,
-  TOP_BUFFER,
-  LEFT_BUFFER,
-  RIGHT_BUFFER,
-} from "./constants.js";
+import { initialValues, LEFT_BUFFER, RIGHT_BUFFER } from "./constants.js";
 
 const gameState = { ...initialValues };
 
@@ -201,7 +196,7 @@ function create() {
 
   gameState.playerBullets = this.physics.add.group();
 
-  const mainGameLoop = (hitBug, repellent) => {
+  function mainGameLoop(hitBug, repellent) {
     //get rid of the pellet and stop the enemy from moving backward
     repellent.destroy();
     hitBug.setVelocityY(0);
@@ -266,7 +261,6 @@ function create() {
           } else {
             //spawn bug in new row
             const xVal = findValidXSlot(gameState);
-
             const yVal = sortedEnemiesY(gameState)[0].y - 50;
             gameState.enemies
               .create(xVal, yVal, getRandBug(hitBug))
@@ -288,10 +282,10 @@ function create() {
         oldBug.alpha = 1;
       }
     }
-  };
+  }
 
-  const powerUpLoop = (hitBug, repellent, scene) => {
-    repellent.destroy();
+  function powerUpLoop(hitBug, megaPowerUp, scene) {
+    megaPowerUp.destroy();
     hitBug.setVelocityY(0);
     const hitBugX = hitBug.x;
     const hitBugY = hitBug.y;
@@ -311,10 +305,8 @@ function create() {
         break;
       }
     }
-
     matchingEnemies.forEach((enemy) => {
       const enemyTween = scene.tweens.add({
-        //this is insane
         targets: enemy,
         x: hitBugX,
         y: hitBugY,
@@ -327,7 +319,7 @@ function create() {
     });
 
     spawnBug(hitBugX, hitBugY, newBugValue);
-  };
+  }
 
   //main game loop
   this.physics.add.collider(
@@ -338,13 +330,13 @@ function create() {
     }
   );
 
-  // this.physics.add.collider(
-  //   gameState.enemies,
-  //   gameState.megaPowerUp,
-  //   (enemy, megaPowerUp) => {
-  //     powerUpLoop(enemy, megaPowerUp);
-  //   }
-  // );
+  this.physics.add.collider(
+    gameState.enemies,
+    gameState.megaPowerUp,
+    (enemy, megaPowerUp) => {
+      powerUpLoop(enemy, megaPowerUp, this.scene);
+    }
+  );
 }
 
 function update() {

@@ -48,7 +48,7 @@ export function powerOf2(v) {
   return v && !(v & (v - 1));
 }
 
-export const topRowHasSpace = (gameState) => {
+export function topRowHasSpace(gameState) {
   if (
     Object.values(gameState.topRow).filter((slot) => slot != null).length == 8
   ) {
@@ -60,9 +60,9 @@ export const topRowHasSpace = (gameState) => {
   return (
     Object.values(gameState.topRow).filter((slot) => slot != null).length >= 1
   );
-};
+}
 
-export const spawnDoubleBug = (hitBug, oldBug, gameState) => {
+export function spawnDoubleBug(hitBug, oldBug, gameState) {
   const yVal = Math.ceil(hitBug.y / 10) * 10;
   const yValOldBug = Math.ceil(oldBug.y / 10) * 10;
   const doublebug = hitBug.texture.key * 2;
@@ -76,14 +76,9 @@ export const spawnDoubleBug = (hitBug, oldBug, gameState) => {
     .setScale(gameState.scale)
     .setGravityY(-200);
   return rowIsEmpty;
-};
+}
 
-export const createStartingEnemies = (
-  gameState,
-  value,
-  firstRow,
-  secondRow
-) => {
+export function createStartingEnemies(gameState, value, firstRow, secondRow) {
   for (let xVal = 1; xVal < 9; xVal++) {
     for (let yVal = firstRow; yVal <= secondRow; yVal++) {
       gameState.enemies
@@ -92,18 +87,4 @@ export const createStartingEnemies = (
         .setGravityY(-200);
     }
   }
-};
-function sortedEnemiesRows() {
-  const sortedByRows = gameState.enemies.getChildren().sort(function (a, b) {
-    if (a.y === b.y) {
-      return a.x - b.x;
-    }
-    return a.y - b.y;
-  });
-  return sortedByRows;
-}
-// numOfTotalEnemies() returns the number of total enemies
-function numOfTotalEnemies() {
-  const totalEnemies = gameState.enemies.getChildren().length;
-  return totalEnemies;
 }
