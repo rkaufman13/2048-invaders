@@ -23,8 +23,8 @@ export function preload() {
   this.load.image("codey", "assets/ship.png");
   this.load.image("enemyBullet", "assets/bugPellet.png");
   this.load.spritesheet("playerBullets", "assets/basicbullet.png", {
-    frameWidth: 38,
-    frameHeight: 20,
+    frameWidth: 20,
+    frameHeight: 24,
   });
   this.load.image("background", "assets/background.png");
   this.load.image("health-powerup", "assets/health-powerup.png");

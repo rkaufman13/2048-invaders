@@ -74,7 +74,9 @@ export function spawnDoubleBug(hitBug, oldBug, gameState) {
   gameState.enemies
     .create(xVal, yVal, doublebug)
     .setScale(gameState.scale)
-    .setGravityY(-200);
+    .setGravityY(-200)
+    .setName("newBug");
+
   return rowIsEmpty;
 }
 
@@ -84,7 +86,27 @@ export function createStartingEnemies(gameState, value, firstRow, secondRow) {
       gameState.enemies
         .create(50 * xVal, 50 * yVal + TOP_BUFFER, value, 0)
         .setScale(gameState.scale)
-        .setGravityY(-200);
+        .setGravityY(-200)
+        .setName(`Bug ${xVal}:${yVal}`);
     }
+  }
+}
+
+export function genPellet(gameState, pellets) {
+  let randomBug = Phaser.Utils.Array.GetRandom(gameState.enemies.getChildren());
+  //most of the time we spawn a enemy projectile.
+  //but x% of the time (let's say 1% for now) we spawn a powerup. 1% may be too generous.
+  const isPowerup = rollAnNSidedDie(100) == 1;
+  if (isPowerup) {
+    const powerUp = gameState.powerUps.create(
+      randomBug.x,
+      randomBug.y,
+      "health-powerup"
+    );
+    powerUp.setScale(2.5);
+    powerUp.setVelocityY(80);
+  } else {
+    const newPellet = pellets.create(randomBug.x, randomBug.y, "enemyBullet");
+    newPellet.setVelocityY(50);
   }
 }
