@@ -7,7 +7,10 @@ export function preload() {
     frameWidth: 83,
     frameHeight: 90,
   });
-  this.load.image("8", "assets/8.png");
+  this.load.spritesheet("8", "assets/8.png", {
+    frameWidth: 83,
+    frameHeight: 90,
+  });
   this.load.image("16", "assets/16.png");
   this.load.image("32", "assets/32.png");
   this.load.image("64", "assets/64.png");
@@ -20,8 +23,8 @@ export function preload() {
   this.load.image("codey", "assets/ship.png");
   this.load.image("enemyBullet", "assets/bugPellet.png");
   this.load.spritesheet("playerBullets", "assets/basicbullet.png", {
-    frameWidth: 38,
-    frameHeight: 20,
+    frameWidth: 20,
+    frameHeight: 24,
   });
   this.load.image("background", "assets/background.png");
   this.load.image("health-powerup", "assets/health-powerup.png");

@@ -48,7 +48,7 @@ export function powerOf2(v) {
   return v && !(v & (v - 1));
 }
 
-export const topRowHasSpace = (gameState) => {
+export function topRowHasSpace(gameState) {
   if (
     Object.values(gameState.topRow).filter((slot) => slot != null).length == 8
   ) {
@@ -60,9 +60,9 @@ export const topRowHasSpace = (gameState) => {
   return (
     Object.values(gameState.topRow).filter((slot) => slot != null).length >= 1
   );
-};
+}
 
-export const spawnDoubleBug = (hitBug, oldBug, gameState) => {
+export function spawnDoubleBug(hitBug, oldBug, gameState) {
   const yVal = Math.ceil(hitBug.y / 10) * 10;
   const yValOldBug = Math.ceil(oldBug.y / 10) * 10;
   const doublebug = hitBug.texture.key * 2;
@@ -74,36 +74,39 @@ export const spawnDoubleBug = (hitBug, oldBug, gameState) => {
   gameState.enemies
     .create(xVal, yVal, doublebug)
     .setScale(gameState.scale)
-    .setGravityY(-200);
-  return rowIsEmpty;
-};
+    .setGravityY(-200)
+    .setName("newBug");
 
-export const createStartingEnemies = (
-  gameState,
-  value,
-  firstRow,
-  secondRow
-) => {
+  return rowIsEmpty;
+}
+
+export function createStartingEnemies(gameState, value, firstRow, secondRow) {
   for (let xVal = 1; xVal < 9; xVal++) {
     for (let yVal = firstRow; yVal <= secondRow; yVal++) {
       gameState.enemies
         .create(50 * xVal, 50 * yVal + TOP_BUFFER, value, 0)
         .setScale(gameState.scale)
-        .setGravityY(-200);
+        .setGravityY(-200)
+        .setName(`Bug ${xVal}:${yVal}`);
     }
   }
-};
-function sortedEnemiesRows() {
-  const sortedByRows = gameState.enemies.getChildren().sort(function (a, b) {
-    if (a.y === b.y) {
-      return a.x - b.x;
-    }
-    return a.y - b.y;
-  });
-  return sortedByRows;
 }
-// numOfTotalEnemies() returns the number of total enemies
-function numOfTotalEnemies() {
-  const totalEnemies = gameState.enemies.getChildren().length;
-  return totalEnemies;
+
+export function genPellet(gameState, pellets) {
+  let randomBug = Phaser.Utils.Array.GetRandom(gameState.enemies.getChildren());
+  //most of the time we spawn a enemy projectile.
+  //but x% of the time (let's say 1% for now) we spawn a powerup. 1% may be too generous.
+  const isPowerup = rollAnNSidedDie(100) == 1;
+  if (isPowerup) {
+    const powerUp = gameState.powerUps.create(
+      randomBug.x,
+      randomBug.y,
+      "health-powerup"
+    );
+    powerUp.setScale(2.5);
+    powerUp.setVelocityY(80);
+  } else {
+    const newPellet = pellets.create(randomBug.x, randomBug.y, "enemyBullet");
+    newPellet.setVelocityY(50);
+  }
 }
