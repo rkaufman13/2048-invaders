@@ -36,4 +36,9 @@ export function preload() {
     frameWidth: 142,
     frameHeight: 142,
   });
+  this.load.audio("shoot", "assets/audio/Shoot_1.wav");
+  this.load.audio("heal", "assets/audio/Power_Up_2.wav");
+  this.load.audio("hitSelf", "assets/audio/Hit_3.wav");
+  this.load.audio("bgm", "assets/audio/Technocracy.mp3");
+  this.load.audio("explosion", "assets/audio/Explosion.wav");
 }

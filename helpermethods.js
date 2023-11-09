@@ -110,3 +110,7 @@ export function genPellet(gameState, pellets) {
     newPellet.setVelocityY(50);
   }
 }
+
+export function genDelay(gameState) {
+  return 1000;
+}
