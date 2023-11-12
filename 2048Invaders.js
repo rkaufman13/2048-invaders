@@ -10,6 +10,7 @@ import {
   spawnDoubleBug,
   createStartingEnemies,
   genPellet,
+  genDelay,
 } from "./helpermethods.js";
 
 import {
@@ -52,6 +53,7 @@ const spawnBug = (xVal, yVal, bugVal) => {
 
 const gameOver = (scene) => {
   gameState.active = false;
+  gameState.bgm.stop();
   gameState.pelletsLoop.destroy();
   scene.physics.pause();
   scene.add.text(100, 250, "Game Over. Click to restart", {
@@ -81,6 +83,13 @@ function create() {
   let scaleY = this.cameras.main.height / background.height;
   let scale = Math.max(scaleX, scaleY);
   background.setScale(scale).setScrollFactor(0);
+
+  gameState.shoot = this.sound.add("shoot", { loop: false });
+  const heal = this.sound.add("heal", { loop: false });
+  const hitSelf = this.sound.add("hitSelf", { loop: false });
+  const explosion = this.sound.add("explosion", { loop: false });
+  gameState.bgm = this.sound.add("bgm", { loop: true });
+  gameState.bgm.play();
 
   // When gameState.active is false, the game will listen for a pointerup event and restart when the event happens
   this.input.on("pointerup", () => {
@@ -131,7 +140,7 @@ function create() {
   gameState.playerBullets = this.physics.add.group();
 
   gameState.pelletsLoop = this.time.addEvent({
-    delay: 1000,
+    delay: genDelay(gameState),
     callback: genPellet,
     args: [gameState, pellets],
     callbackScope: this,
@@ -159,10 +168,13 @@ function create() {
   //comment out the enemy pellet collider below to test the game without dying
   this.physics.add.collider(pellets, gameState.player, (player, pellet) => {
     pellet.destroy();
+
     if (gameState.healthBar.frame.name < 3) {
+      hitSelf.play();
       gameState.healthBar.setFrame(gameState.healthBar.frame.name + 1);
     } else {
       gameState.healthBar.setFrame(4);
+      explosion.play();
       gameOver(this);
     }
   });
@@ -173,6 +185,7 @@ function create() {
     gameState.powerUps,
     (player, powerUp) => {
       powerUp.destroy();
+      heal.play();
       if (gameState.healthBar.frame.name > 0) {
         gameState.healthBar.setFrame(gameState.healthBar.frame.name - 1);
       }
@@ -349,6 +362,7 @@ function update() {
           .setName("megaPowerup");
         gameState.megaPowerUp.play("shootMegaMagnet");
       } else {
+        gameState.shoot.play();
         const bullet = gameState.playerBullets
           .create(gameState.player.x, gameState.player.y, "playerBullets")
           .setGravityY(-400)
