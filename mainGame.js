@@ -14,6 +14,7 @@ import {
   genDelay,
   genMegaMagnet,
   getRandBug,
+  addBackground,
 } from "./helpermethods.js";
 
 import {
@@ -78,6 +79,10 @@ export default class mainGame extends Phaser.Scene {
       frameWidth: 142,
       frameHeight: 142,
     });
+    this.load.spritesheet("pauseButton", "assets/pause_play.png", {
+      frameWidth: 12,
+      frameHeight: 13,
+    });
     this.load.audio("shoot", "assets/audio/Shoot_1.wav");
     this.load.audio("heal", "assets/audio/Power_Up_2.wav");
     this.load.audio("hitSelf", "assets/audio/Hit_3.wav");
@@ -107,15 +112,7 @@ export default class mainGame extends Phaser.Scene {
     // When gameState.active is true, the game is being played and not over. When gameState.active is false, then it's game over
     gameState.active = true;
 
-    let background = this.add.image(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2,
-      "background"
-    );
-    let scaleX = this.cameras.main.width / background.width;
-    let scaleY = this.cameras.main.height / background.height;
-    let scale = Math.max(scaleX, scaleY);
-    background.setScale(scale).setScrollFactor(0);
+    addBackground(this);
 
     gameState.shoot = this.sound.add("shoot", { loop: false });
     const heal = this.sound.add("heal", { loop: false });
@@ -161,6 +158,7 @@ export default class mainGame extends Phaser.Scene {
     createStartingEnemies(gameState, "2", 3, 4);
 
     gameState.cursors = this.input.keyboard.createCursorKeys();
+    gameState.pauseButton = this.input.keyboard.addKey("P");
 
     const pellets = this.physics.add.group();
 
@@ -445,6 +443,12 @@ export default class mainGame extends Phaser.Scene {
         } else {
           //pass
         }
+      }
+
+      if (Phaser.Input.Keyboard.JustDown(gameState.pauseButton)) {
+        this.scene.launch("paused");
+        gameState.bgm.pause();
+        this.scene.pause();
       }
       // Add logic for winning condition and enemy movements below:
 

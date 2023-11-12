@@ -1,5 +1,5 @@
-export function preload() {
-  this.load.spritesheet("2", "assets/2.png", {
+export default function preloadMainGame(scene) {
+  scene.load.spritesheet("2", "assets/2.png", {
     frameWidth: 83,
     frameHeight: 90,
   });

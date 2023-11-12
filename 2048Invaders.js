@@ -1,4 +1,7 @@
 import mainGame from "./mainGame.js";
+import intro from "./intro.js";
+import paused from "./paused.js";
+import settings from "./settings.js";
 
 const config = {
   type: Phaser.AUTO,
@@ -11,7 +14,7 @@ const config = {
       enableBody: true,
     },
   },
-  scene: [mainGame],
+  scene: [intro, mainGame, paused, settings],
 };
 
 const game = new Phaser.Game(config);

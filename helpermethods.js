@@ -171,6 +171,18 @@ export function getRandBug(bug) {
   }
 }
 
+export function addBackground(scene) {
+  let background = scene.add.image(
+    scene.cameras.main.width / 2,
+    scene.cameras.main.height / 2,
+    "background"
+  );
+  let scaleX = scene.cameras.main.width / background.width;
+  let scaleY = scene.cameras.main.height / background.height;
+  let scale = Math.max(scaleX, scaleY);
+  background.setScale(scale).setScrollFactor(0);
+}
+
 export function genDelay(gameState) {
   return 1000;
 }
