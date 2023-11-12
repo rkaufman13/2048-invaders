@@ -7,7 +7,9 @@ import {
   updateScore,
   powerOf2,
   topRowHasSpace,
-  spawnDoubleBug,
+  spawnBug,
+  tweenAndDestroy,
+  bottomRowIsOrWillBeEmpty,
   createStartingEnemies,
   genPellet,
   genDelay,
@@ -43,14 +45,6 @@ function getRandBug(bug) {
     return choices[choice];
   }
 }
-
-const spawnBug = (xVal, yVal, bugVal) => {
-  gameState.activeBug = 0;
-  gameState.enemies
-    .create(xVal, yVal, bugVal)
-    .setScale(gameState.scale)
-    .setGravityY(-200);
-};
 
 const youWin = (scene) => {
   gameState.active = false;
@@ -128,11 +122,6 @@ function create() {
 
   //create 2 rows of 8 enemies with value 2
   createStartingEnemies(gameState, "2", 3, 4);
-
-  //add some properties to each enemy
-  gameState.enemies.getChildren().forEach((enemy) => {
-    enemy.value = enemy.texture.key;
-  });
 
   gameState.cursors = this.input.keyboard.createCursorKeys();
 
@@ -243,7 +232,14 @@ function create() {
           hitBug.setFrame(0);
         }
       } else if (hitBug.texture.key === oldBug.texture.key) {
-        const rowIsEmpty = spawnDoubleBug(hitBug, oldBug, gameState, scene);
+        const yVal = Math.ceil(hitBug.y / 10) * 10;
+        const hitBugRow = hitBug.row;
+        const doubleBugVal = hitBug.texture.key * 2;
+        const xVal = hitBug.x;
+        const rowIsEmpty = bottomRowIsOrWillBeEmpty(hitBug, oldBug, gameState);
+        gameState.activeBug = 0;
+        tweenAndDestroy(hitBug, oldBug, xVal, yVal, scene);
+        spawnBug(xVal, yVal, doubleBugVal, hitBugRow, gameState);
         updateScore(gameState);
         scoreText.setText(`Your score: ${gameState.sumValueOfEnemies}`);
 
@@ -254,27 +250,23 @@ function create() {
         if (rowIsEmpty) {
           gameState.enemies.getChildren().forEach((bug) => {
             bug.y = bug.y + 50;
+            bug.row++;
           });
         }
         if (gameState.randomspawncounter >= 2) {
+          //todo DRY
           if (topRowHasSpace(gameState)) {
             const yVal = sortedEnemiesY(gameState)[0].y;
+            const row = sortedEnemiesY(gameState)[0].row;
             const xVal = findValidXSlot(gameState);
-            gameState.enemies
-              .create(xVal, yVal, getRandBug(hitBug))
-              .setScale(gameState.scale)
-              .setGravityY(-200);
+            spawnBug(xVal, yVal, getRandBug(hitBug), row, gameState);
           } else {
             const xVal = findValidXSlot(gameState);
             const yVal = sortedEnemiesY(gameState)[0].y - 50;
-            gameState.enemies
-              .create(xVal, yVal, getRandBug(hitBug))
-              .setScale(gameState.scale)
-              .setGravityY(-200);
-
-            gameState.enemies
-              .getChildren()
-              .forEach((bug) => (bug.y = bug.y + 10));
+            //todo replace with call to spawn method
+            const row = sortedEnemiesY(gameState)[0].row - 1;
+            spawnBug(xVal, yVal, getRandBug(hitBug), row, gameState);
+            gameState.enemies.getChildren().forEach((bug) => (bug.y += 10));
           }
           gameState.randomspawncounter = 0;
         }
@@ -295,6 +287,7 @@ function create() {
     const hitBugX = hitBug.x;
     const hitBugY = hitBug.y;
     const hitBugValue = hitBug.texture.key;
+    const hitBugRow = hitBug.row;
 
     const matchingEnemies = gameState.enemies
       .getChildren()
@@ -325,7 +318,7 @@ function create() {
       });
     });
 
-    spawnBug(hitBugX, hitBugY, newBugValue);
+    spawnBug(hitBugX, hitBugY, newBugValue, hitBugRow, gameState);
   }
 
   //main game loop

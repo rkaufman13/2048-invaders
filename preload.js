@@ -42,7 +42,7 @@ export function preload() {
   this.load.audio("shoot", "assets/audio/Shoot_1.wav");
   this.load.audio("heal", "assets/audio/Power_Up_2.wav");
   this.load.audio("hitSelf", "assets/audio/Hit_3.wav");
-  this.load.audio("bgm", "assets/audio/Technocracy.mp3");
+  this.load.audio("bgm", "assets/audio/spaceship_shooter.mp3");
   this.load.audio("explosion", "assets/audio/Explosion.wav");
   this.load.audio("collectMagnet", "assets/audio/Retro Impact Metal 05.wav");
   this.load.audio("shootMegaMagnet", "assets/audio/Retro Weapon Laser 03.wav");
