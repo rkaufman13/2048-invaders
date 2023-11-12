@@ -249,7 +249,12 @@ function create() {
         }
         if (rowIsEmpty) {
           gameState.enemies.getChildren().forEach((bug) => {
-            bug.y = bug.y + 50;
+            scene.tweens.add({
+              targets: bug,
+              y: bug.y + 50,
+              duration: 50,
+              repeat: 0,
+            });
             bug.row++;
           });
         }
