@@ -150,6 +150,27 @@ export function genMegaMagnet(gameState) {
   gameState.megaPowerUp = megaMagnet;
 }
 
+export function getRandBug(bug) {
+  let basenum = bug.texture.key;
+  /*newnum should occasionally be 2
+    maybe 1/3 of the time?
+    and the rest of the time it should be within 1 power of 2 of the number that was just destroyed
+    //*/
+  let isTwo = rollAnNSidedDie(3);
+  if (isTwo == 1) {
+    return 2;
+  } else {
+    let choices = [basenum / 2, basenum / 2, basenum, basenum * 2];
+    let choice = Math.floor(Math.random() * choices.length);
+
+    while (choices[choice] < 2 || choices[choice] > 2048) {
+      choice = Math.floor(Math.random() * choices.length);
+    }
+
+    return choices[choice];
+  }
+}
+
 export function genDelay(gameState) {
   return 1000;
 }
