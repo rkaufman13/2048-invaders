@@ -11,6 +11,7 @@ import {
   createStartingEnemies,
   genPellet,
   genDelay,
+  genMegaMagnet,
 } from "./helpermethods.js";
 
 import {
@@ -51,18 +52,6 @@ const spawnBug = (xVal, yVal, bugVal) => {
     .setGravityY(-200);
 };
 
-const gameOver = (scene) => {
-  gameState.active = false;
-  gameState.bgm.stop();
-  gameState.pelletsLoop.destroy();
-  scene.physics.pause();
-  scene.add.text(100, 250, "Game Over. Click to restart", {
-    fontSize: "15px",
-    fill: "#fff",
-    backgroundColor: "#000",
-  });
-};
-
 const youWin = (scene) => {
   gameState.active = false;
   gameState.pelletsLoop.destroy();
@@ -71,6 +60,19 @@ const youWin = (scene) => {
 };
 
 function create() {
+  function gameOver(scene) {
+    gameState.active = false;
+    gameState.bgm.stop();
+    gameState.pelletsLoop.destroy();
+    gameState.generateMegaMagnets.destroy();
+    scene.physics.pause();
+    scene.add.text(100, 250, "Game Over. Click to restart", {
+      fontSize: "15px",
+      fill: "#fff",
+      backgroundColor: "#000",
+    });
+  }
+
   // When gameState.active is true, the game is being played and not over. When gameState.active is false, then it's game over
   gameState.active = true;
 
@@ -88,6 +90,10 @@ function create() {
   const heal = this.sound.add("heal", { loop: false });
   const hitSelf = this.sound.add("hitSelf", { loop: false });
   const explosion = this.sound.add("explosion", { loop: false });
+  const powerUpGained = this.sound.add("collectMagnet", { loop: false });
+  gameState.shootMegaMagnetFX = this.sound.add("shootMegaMagnet", {
+    loop: false,
+  });
   gameState.bgm = this.sound.add("bgm", { loop: true });
   gameState.bgm.play();
 
@@ -147,6 +153,14 @@ function create() {
     loop: true,
   });
 
+  gameState.generateMegaMagnets = this.time.addEvent({
+    delay: 1000 * 2 * 60,
+    callback: genMegaMagnet,
+    args: [gameState],
+    callbackScope: this,
+    loop: true,
+  });
+
   // Uses the physics plugin to create the player
   gameState.player = this.physics.add.sprite(225, 475, "codey").setScale(2);
   //set healthBar
@@ -192,7 +206,18 @@ function create() {
     }
   );
 
-  function mainGameLoop(hitBug, repellent) {
+  //give the magnet to the player when they catch it
+  this.physics.add.collider(
+    gameState.player,
+    gameState.megaPowerUps,
+    (player, megaPowerUp) => {
+      megaPowerUp.destroy();
+      powerUpGained.play();
+      gameState.timeForMegaPowerUp = true;
+    }
+  );
+
+  function mainGameLoop(hitBug, repellent, scene) {
     //get rid of the pellet and stop the enemy from moving backward
     repellent.destroy();
     hitBug.setVelocityY(0);
@@ -218,7 +243,7 @@ function create() {
           hitBug.setFrame(0);
         }
       } else if (hitBug.texture.key === oldBug.texture.key) {
-        const rowIsEmpty = spawnDoubleBug(hitBug, oldBug, gameState);
+        const rowIsEmpty = spawnDoubleBug(hitBug, oldBug, gameState, scene);
         updateScore(gameState);
         scoreText.setText(`Your score: ${gameState.sumValueOfEnemies}`);
 
@@ -308,7 +333,7 @@ function create() {
     gameState.enemies,
     gameState.playerBullets,
     (hitBug, repellent) => {
-      mainGameLoop(hitBug, repellent);
+      mainGameLoop(hitBug, repellent, this);
     }
   );
 
@@ -331,7 +356,7 @@ function create() {
   });
 
   this.anims.create({
-    key: "shootMegaMagnet",
+    key: "shootMegaMagnetAnim",
     frameRate: 4,
     frames: this.anims.generateFrameNumbers("megaPowerup", {
       start: 0,
@@ -354,24 +379,30 @@ function update() {
 
     // Fire at the enemies
     if (Phaser.Input.Keyboard.JustDown(gameState.cursors.space)) {
-      if (gameState.sumValueOfEnemies >= 960) {
+      gameState.shoot.play();
+      const bullet = gameState.playerBullets
+        .create(gameState.player.x, gameState.player.y, "playerBullets")
+        .setGravityY(-400)
+        .setVelocityY(-300);
+      bullet.setScale(0.75);
+      bullet.play("shootPlayerBullet");
+    }
+
+    //fire megamagnet
+    if (Phaser.Input.Keyboard.JustDown(gameState.cursors.shift)) {
+      if (gameState.timeForMegaPowerUp) {
+        gameState.timeForMegaPowerUp = false;
         gameState.megaPowerUp = gameState.megaPowerUps
           .create(gameState.player.x, gameState.player.y, "megaPowerup")
           .setGravityY(-400)
           .setScale(0.25)
           .setName("megaPowerup");
-        gameState.megaPowerUp.play("shootMegaMagnet");
+        gameState.megaPowerUp.play("shootMegaMagnetAnim");
+        gameState.shootMegaMagnetFX.play();
       } else {
-        gameState.shoot.play();
-        const bullet = gameState.playerBullets
-          .create(gameState.player.x, gameState.player.y, "playerBullets")
-          .setGravityY(-400)
-          .setVelocityY(-300);
-        bullet.setScale(0.75);
-        bullet.play("shootPlayerBullet");
+        //pass
       }
     }
-
     // Add logic for winning condition and enemy movements below:
 
     gameState.enemies

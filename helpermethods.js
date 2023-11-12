@@ -10,10 +10,7 @@ export function sortedEnemies(gameState) {
 }
 
 export function sortedEnemiesY(gameState) {
-  const orderedByYCoord = gameState.enemies
-    .getChildren()
-    .sort((a, b) => a.y - b.y);
-  return orderedByYCoord;
+  return gameState.enemies.getChildren().sort((a, b) => a.y - b.y);
 }
 
 export function rollAnNSidedDie(n) {
@@ -62,22 +59,32 @@ export function topRowHasSpace(gameState) {
   );
 }
 
-export function spawnDoubleBug(hitBug, oldBug, gameState) {
+export function spawnDoubleBug(hitBug, oldBug, gameState, scene) {
+  console.log(scene);
   const yVal = Math.ceil(hitBug.y / 10) * 10;
   const yValOldBug = Math.ceil(oldBug.y / 10) * 10;
   const doublebug = hitBug.texture.key * 2;
   const xVal = hitBug.x;
-  hitBug.destroy();
-  oldBug.destroy();
-  const rowIsEmpty = bottomRowIsEmpty(yVal, yValOldBug, gameState);
-  gameState.activeBug = 0;
-  gameState.enemies
-    .create(xVal, yVal, doublebug)
-    .setScale(gameState.scale)
-    .setGravityY(-200)
-    .setName("newBug");
 
-  return rowIsEmpty;
+  scene.tweens.add({
+    targets: oldBug,
+    x: xVal,
+    y: yVal,
+    duration: 50,
+    repeat: 0,
+    onComplete: () => {
+      oldBug.destroy();
+      hitBug.destroy();
+      const rowIsEmpty = bottomRowIsEmpty(yVal, yValOldBug, gameState);
+      gameState.activeBug = 0;
+      gameState.enemies
+        .create(xVal, yVal, doublebug)
+        .setScale(gameState.scale)
+        .setGravityY(-200)
+        .setName("newBug");
+      return rowIsEmpty;
+    },
+  });
 }
 
 export function createStartingEnemies(gameState, value, firstRow, secondRow) {
@@ -106,9 +113,24 @@ export function genPellet(gameState, pellets) {
     powerUp.setScale(2.5);
     powerUp.setVelocityY(80);
   } else {
-    const newPellet = pellets.create(randomBug.x, randomBug.y, "enemyBullet");
+    const newPellet = pellets
+      .create(randomBug.x, randomBug.y, "enemyBullet")
+      .setScale(1.5);
     newPellet.setVelocityY(50);
   }
+}
+
+export function genMegaMagnet(gameState) {
+  const lowestYVal =
+    sortedEnemiesY(gameState)[sortedEnemiesY(gameState).length - 1].y;
+  const megaMagnet = gameState.megaPowerUps
+    .create(rollAnNSidedDie(450), lowestYVal + 100, "megaPowerup")
+    .setScale(0.25)
+    .setName("megaMagnet");
+  megaMagnet.play("shootMegaMagnetAnim");
+  //play powerup gen sound
+  megaMagnet.setVelocityY(30);
+  gameState.megaPowerUp = megaMagnet;
 }
 
 export function genDelay(gameState) {

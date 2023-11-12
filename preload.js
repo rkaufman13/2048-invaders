@@ -11,7 +11,10 @@ export function preload() {
     frameWidth: 83,
     frameHeight: 90,
   });
-  this.load.image("16", "assets/16.png");
+  this.load.spritesheet("16", "assets/16.png", {
+    frameWidth: 83,
+    frameHeight: 90,
+  });
   this.load.image("32", "assets/32.png");
   this.load.image("64", "assets/64.png");
   this.load.image("128", "assets/128.png");
@@ -21,7 +24,7 @@ export function preload() {
   this.load.image("2048", "assets/2048.png");
   this.load.image("platform", "assets/platform.png");
   this.load.image("codey", "assets/ship.png");
-  this.load.image("enemyBullet", "assets/bugPellet.png");
+  this.load.image("enemyBullet", "assets/enemybullet.png");
   this.load.spritesheet("playerBullets", "assets/basicbullet.png", {
     frameWidth: 20,
     frameHeight: 24,
@@ -41,4 +44,6 @@ export function preload() {
   this.load.audio("hitSelf", "assets/audio/Hit_3.wav");
   this.load.audio("bgm", "assets/audio/Technocracy.mp3");
   this.load.audio("explosion", "assets/audio/Explosion.wav");
+  this.load.audio("collectMagnet", "assets/audio/Retro Impact Metal 05.wav");
+  this.load.audio("shootMegaMagnet", "assets/audio/Retro Weapon Laser 03.wav");
 }
