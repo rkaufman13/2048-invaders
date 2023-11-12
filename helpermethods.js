@@ -35,10 +35,28 @@ export const findValidXSlot = (gameState) => {
   return slot * 50 + sortedEnemies(gameState)[0].x;
 };
 
-export const bottomRowIsEmpty = (yVal, yValOldBug, gameState) => {
+export const bottomRowIsOrWillBeEmpty = (hitBug, oldBug, gameState) => {
+  /*this currently accounts for 'there are no enemies remaining with the largest y value of the two bugs we just killed
+    which actually could not be the bottom row lol
+    we need to account for the following states
+    1) both killed bugs were in the bottom row (at the time this is called they will still be alive, because callback hell), and there are or are not bugs remaining in that row
+    2) one killed bug was in the bottom row, and there are or are not bugs in that row
+    3) neither killed bug was in the bottom row, in which case the bottom row is never empty
+    */
   const sortedEnemies = sortedEnemiesY(gameState);
-  const lowestEnemyY = Math.max(yVal, yValOldBug);
-  return sortedEnemies.filter((enemy) => enemy.y === lowestEnemyY).length == 0;
+  if (
+    hitBug.row == 4 &&
+    oldBug.row == 4 &&
+    sortedEnemies.filter((enemy) => enemy.row == 4).length == 2
+  ) {
+    return true;
+  } else if (
+    (hitBug.row == 4 || oldBug.row == 4) &&
+    sortedEnemies.filter((enemy) => enemy.row == 4).length == 1
+  ) {
+    return true;
+  }
+  return false;
 };
 
 export function powerOf2(v) {
@@ -46,6 +64,7 @@ export function powerOf2(v) {
 }
 
 export function topRowHasSpace(gameState) {
+  //todo now that we have a row property on enemies, can this be made more efficient?
   if (
     Object.values(gameState.topRow).filter((slot) => slot != null).length == 8
   ) {
@@ -59,13 +78,17 @@ export function topRowHasSpace(gameState) {
   );
 }
 
-export function spawnDoubleBug(hitBug, oldBug, gameState, scene) {
-  console.log(scene);
-  const yVal = Math.ceil(hitBug.y / 10) * 10;
-  const yValOldBug = Math.ceil(oldBug.y / 10) * 10;
-  const doublebug = hitBug.texture.key * 2;
-  const xVal = hitBug.x;
+export function spawnBug(xVal, yVal, bugVal, row, gameState) {
+  gameState.activeBug = 0;
+  const newEnemy = gameState.enemies
+    .create(xVal, yVal, bugVal)
+    .setScale(gameState.scale)
+    .setGravityY(-200)
+    .setName(`Bug ${xVal}:${yVal}`);
+  newEnemy.row = row;
+}
 
+export function tweenAndDestroy(hitBug, oldBug, xVal, yVal, scene) {
   scene.tweens.add({
     targets: oldBug,
     x: xVal,
@@ -75,14 +98,6 @@ export function spawnDoubleBug(hitBug, oldBug, gameState, scene) {
     onComplete: () => {
       oldBug.destroy();
       hitBug.destroy();
-      const rowIsEmpty = bottomRowIsEmpty(yVal, yValOldBug, gameState);
-      gameState.activeBug = 0;
-      gameState.enemies
-        .create(xVal, yVal, doublebug)
-        .setScale(gameState.scale)
-        .setGravityY(-200)
-        .setName("newBug");
-      return rowIsEmpty;
     },
   });
 }
@@ -90,11 +105,13 @@ export function spawnDoubleBug(hitBug, oldBug, gameState, scene) {
 export function createStartingEnemies(gameState, value, firstRow, secondRow) {
   for (let xVal = 1; xVal < 9; xVal++) {
     for (let yVal = firstRow; yVal <= secondRow; yVal++) {
-      gameState.enemies
+      const enemy = gameState.enemies
         .create(50 * xVal, 50 * yVal + TOP_BUFFER, value, 0)
         .setScale(gameState.scale)
         .setGravityY(-200)
         .setName(`Bug ${xVal}:${yVal}`);
+      enemy.row = yVal;
+      enemy.value = enemy.texture.key;
     }
   }
 }
@@ -131,6 +148,39 @@ export function genMegaMagnet(gameState) {
   //play powerup gen sound
   megaMagnet.setVelocityY(30);
   gameState.megaPowerUp = megaMagnet;
+}
+
+export function getRandBug(bug) {
+  let basenum = bug.texture.key;
+  /*newnum should occasionally be 2
+    maybe 1/3 of the time?
+    and the rest of the time it should be within 1 power of 2 of the number that was just destroyed
+    //*/
+  let isTwo = rollAnNSidedDie(3);
+  if (isTwo == 1) {
+    return 2;
+  } else {
+    let choices = [basenum / 2, basenum / 2, basenum, basenum * 2];
+    let choice = Math.floor(Math.random() * choices.length);
+
+    while (choices[choice] < 2 || choices[choice] > 2048) {
+      choice = Math.floor(Math.random() * choices.length);
+    }
+
+    return choices[choice];
+  }
+}
+
+export function addBackground(scene) {
+  let background = scene.add.image(
+    scene.cameras.main.width / 2,
+    scene.cameras.main.height / 2,
+    "background"
+  );
+  let scaleX = scene.cameras.main.width / background.width;
+  let scaleY = scene.cameras.main.height / background.height;
+  let scale = Math.max(scaleX, scaleY);
+  background.setScale(scale).setScrollFactor(0);
 }
 
 export function genDelay(gameState) {
