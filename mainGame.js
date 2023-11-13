@@ -38,6 +38,10 @@ export default class mainGame extends Phaser.Scene {
     super("game");
   }
 
+  init(data) {
+    gameState.volume = data.sfxVolume || 100;
+  }
+
   preload() {
     this.load.spritesheet("2", "assets/2.png", {
       frameWidth: 83,
@@ -114,15 +118,34 @@ export default class mainGame extends Phaser.Scene {
 
     addBackground(this);
 
-    gameState.shoot = this.sound.add("shoot", { loop: false });
-    const heal = this.sound.add("heal", { loop: false });
-    const hitSelf = this.sound.add("hitSelf", { loop: false });
-    const explosion = this.sound.add("explosion", { loop: false });
-    const powerUpGained = this.sound.add("collectMagnet", { loop: false });
+    gameState.shoot = this.sound.add("shoot", {
+      loop: false,
+      volume: gameState.volume / 100,
+    });
+    const heal = this.sound.add("heal", {
+      loop: false,
+      volume: gameState.volume / 100,
+    });
+    const hitSelf = this.sound.add("hitSelf", {
+      loop: false,
+      volume: gameState.volume / 100,
+    });
+    const explosion = this.sound.add("explosion", {
+      loop: false,
+      volume: gameState.volume / 100,
+    });
+    const powerUpGained = this.sound.add("collectMagnet", {
+      loop: false,
+      volume: gameState.volume / 100,
+    });
     gameState.shootMegaMagnetFX = this.sound.add("shootMegaMagnet", {
       loop: false,
+      volume: gameState.volume / 100,
     });
-    gameState.bgm = this.sound.add("bgm", { loop: true });
+    gameState.bgm = this.sound.add("bgm", {
+      loop: true,
+      volume: gameState.volume / 100,
+    });
     gameState.bgm.play();
 
     // When gameState.active is false, the game will listen for a pointerup event and restart when the event happens

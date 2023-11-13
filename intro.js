@@ -5,6 +5,10 @@ export default class Intro extends Phaser.Scene {
     super("welcome");
   }
 
+  init(data) {
+    this.volume = data.sfxVolume || 100;
+  }
+
   preload() {
     this.load.image("background", "assets/background.png");
     this.load.image("logo", "assets/logo.png");
@@ -14,7 +18,10 @@ export default class Intro extends Phaser.Scene {
 
   create() {
     addBackground(this);
-    const startupSound = this.sound.add("startupSound", { loop: false });
+    const startupSound = this.sound.add("startupSound", {
+      loop: false,
+      volume: this.volume / 100,
+    });
     startupSound.play();
     const logo = this.add.image(225, 150, "logo").setScale(0.3).setAlpha(0);
     this.tweens.add({
@@ -44,12 +51,10 @@ export default class Intro extends Phaser.Scene {
     });
 
     startButton.on("pointerup", () => {
-      this.scene.start("game");
+      this.scene.start("game", { sfxVolume: this.volume });
     });
     settings.on("pointerup", () => {
       this.scene.start("settings");
     });
   }
-
-  update() {}
 }
