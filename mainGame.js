@@ -112,6 +112,12 @@ export default class mainGame extends Phaser.Scene {
       "shootMegaMagnet",
       "assets/audio/Retro Weapon Laser 03.wav"
     );
+    this.load.audio("firstHit", "assets/audio/Retro Jump Simple B 05.wav");
+    this.load.audio("secondHitBad", "assets/audio/Retro Negative Short 23.wav");
+    this.load.audio(
+      "secondHitGood",
+      "assets/audio/Retro PowerUP StereoUP 05.wav"
+    );
   }
 
   create() {
@@ -163,6 +169,18 @@ export default class mainGame extends Phaser.Scene {
       volume: gameState.volume / 100,
     });
 
+    this.firstHit = this.sound.add("firstHit", {
+      loop: false,
+      volume: gameState.volume / 100,
+    });
+    this.secondHitBad = this.sound.add("secondHitBad", {
+      loop: false,
+      volume: gameState.volume / 100,
+    });
+    this.secondHitGood = this.sound.add("secondHitGood", {
+      loop: false,
+      volume: gameState.volume / 100,
+    });
     gameState.bgm = this.sound.add("bgm", {
       loop: true,
       volume: gameState.volume / 100,
@@ -313,12 +331,14 @@ export default class mainGame extends Phaser.Scene {
         //temp workaround until all images are made
         if (FINISHED_SPRITES_ARRAY.includes(hitBug.texture.key)) {
           hitBug.setFrame(1);
+          scene.firstHit.play();
         }
         hitBug.alpha = 0.5;
       } else {
         const oldBug = gameState.activeBug;
         if (oldBug === hitBug) {
           gameState.activeBug = 0;
+          scene.secondHitBad.play();
           hitBug.alpha = 1;
           //temp workaround until all images are made
           if (FINISHED_SPRITES_ARRAY.includes(hitBug.texture.key)) {
@@ -335,6 +355,7 @@ export default class mainGame extends Phaser.Scene {
             gameState
           );
           gameState.activeBug = 0;
+          scene.secondHitGood.play();
           tweenAndDestroy(hitBug, oldBug, xVal, yVal, scene);
           spawnBug(xVal, yVal, doubleBugVal, hitBugRow, gameState);
           updateScore(gameState);
@@ -379,6 +400,7 @@ export default class mainGame extends Phaser.Scene {
           gameState.activeBug = hitBug;
           hitBug.alpha = 0.5;
           oldBug.alpha = 1;
+          scene.secondHitBad.play();
         }
       }
     }
