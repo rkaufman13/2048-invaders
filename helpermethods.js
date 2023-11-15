@@ -140,14 +140,14 @@ export function genPellet(gameState, pellets) {
 export function genMegaMagnet(gameState) {
   const lowestYVal =
     sortedEnemiesY(gameState)[sortedEnemiesY(gameState).length - 1].y;
-  const megaMagnet = gameState.megaPowerUps
-    .create(rollAnNSidedDie(450), lowestYVal + 100, "megaPowerup")
+  const megaMagnet = gameState.megaPowerUpPickups
+    .create(rollAnNSidedDie(450), lowestYVal, "megaPowerup-pickup")
     .setScale(0.25)
-    .setName("megaMagnet");
-  megaMagnet.play("shootMegaMagnetAnim");
-  //play powerup gen sound
+    .setName("megaMagnetPickup");
+  megaMagnet.play("megaMagnetPickupAnim");
+  gameState.genMegaMagnetFX.play();
   megaMagnet.setVelocityY(30);
-  gameState.megaPowerUp = megaMagnet;
+  gameState.megaPowerUpPickup = megaMagnet;
 }
 
 export function getRandBug(bug) {

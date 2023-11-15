@@ -45,16 +45,10 @@ export default class Settings extends Phaser.Scene {
     this.add.text(220, 375, "<-???", basicFontConfig);
 
     this.add.text(100, 100, "Volume", basicFontConfig);
-    this.add.image(220, 105, "slider").setScale(3);
-    const handle = this.add.image(250, 105, "handle").setScale(3);
-    const leftButton = this.add
-      .image(170, 103, "leftclick")
-      .setScale(3)
-      .setInteractive();
-    const rightButton = this.add
-      .image(270, 103, "rightclick")
-      .setScale(3)
-      .setInteractive();
+    this.add.image(220, 105, "slider");
+    const handle = this.add.image(250, 105, "handle");
+    const leftButton = this.add.image(170, 103, "leftclick").setInteractive();
+    const rightButton = this.add.image(270, 103, "rightclick").setInteractive();
 
     const closeButton = this.add.image(410, 40, "close").setInteractive();
 

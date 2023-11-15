@@ -59,7 +59,10 @@ export default class mainGame extends Phaser.Scene {
       frameWidth: 83,
       frameHeight: 90,
     });
-    this.load.image("32", "assets/32.png");
+    this.load.spritesheet("32", "assets/32.png", {
+      frameWidth: 83,
+      frameHeight: 90,
+    });
     this.load.image("64", "assets/64.png");
     this.load.image("128", "assets/128.png");
     this.load.image("256", "assets/256.png");
@@ -83,6 +86,14 @@ export default class mainGame extends Phaser.Scene {
       frameWidth: 142,
       frameHeight: 142,
     });
+    this.load.spritesheet(
+      "megaPowerup-pickup",
+      "assets/mega-powerup-pickup.png",
+      {
+        frameWidth: 142,
+        frameHeight: 142,
+      }
+    );
     this.load.spritesheet("pauseButton", "assets/pause_play.png", {
       frameWidth: 12,
       frameHeight: 13,
@@ -92,6 +103,10 @@ export default class mainGame extends Phaser.Scene {
     this.load.audio("hitSelf", "assets/audio/Hit_3.wav");
     this.load.audio("bgm", "assets/audio/spaceship_shooter.mp3");
     this.load.audio("explosion", "assets/audio/Explosion.wav");
+    this.load.audio(
+      "generateMagnet",
+      "assets/audio/Retro Musicaly 03 nananana.wav"
+    );
     this.load.audio("collectMagnet", "assets/audio/Retro Impact Metal 05.wav");
     this.load.audio(
       "shootMegaMagnet",
@@ -142,6 +157,12 @@ export default class mainGame extends Phaser.Scene {
       loop: false,
       volume: gameState.volume / 100,
     });
+
+    gameState.genMegaMagnetFX = this.sound.add("generateMagnet", {
+      loop: false,
+      volume: gameState.volume / 100,
+    });
+
     gameState.bgm = this.sound.add("bgm", {
       loop: true,
       volume: gameState.volume / 100,
@@ -188,6 +209,7 @@ export default class mainGame extends Phaser.Scene {
     gameState.powerUps = this.physics.add.group();
 
     gameState.megaPowerUps = this.physics.add.group();
+    gameState.megaPowerUpPickups = this.physics.add.group();
 
     gameState.megaPowerUp = null;
     gameState.playerBullets = this.physics.add.group();
@@ -222,6 +244,14 @@ export default class mainGame extends Phaser.Scene {
     this.physics.add.collider(gameState.powerUps, platforms, (powerUp) => {
       powerUp.destroy();
     });
+    this.physics.add.collider(
+      gameState.megaPowerUpPickups,
+      platforms,
+      (powerUp) => {
+        powerUp.destroy();
+        gameState.genMegaMagnetFX.stop();
+      }
+    );
     this.physics.add.collider(
       gameState.enemies.getChildren(),
       platforms,
@@ -260,9 +290,10 @@ export default class mainGame extends Phaser.Scene {
     //give the magnet to the player when they catch it
     this.physics.add.collider(
       gameState.player,
-      gameState.megaPowerUps,
+      gameState.megaPowerUpPickups,
       (player, megaPowerUp) => {
         megaPowerUp.destroy();
+        gameState.genMegaMagnetFX.stop();
         powerUpGained.play();
         gameState.timeForMegaPowerUp = true;
       }
@@ -423,6 +454,15 @@ export default class mainGame extends Phaser.Scene {
       key: "shootMegaMagnetAnim",
       frameRate: 4,
       frames: this.anims.generateFrameNumbers("megaPowerup", {
+        start: 0,
+        end: 3,
+      }),
+      repeat: -1,
+    });
+    this.anims.create({
+      key: "megaMagnetPickupAnim",
+      frameRate: 4,
+      frames: this.anims.generateFrameNumbers("megaPowerup-pickup", {
         start: 0,
         end: 3,
       }),
