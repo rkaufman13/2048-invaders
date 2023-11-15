@@ -139,7 +139,10 @@ export default class mainGame extends Phaser.Scene {
 
     addBackground(this);
 
-    gameState.shoot = this.sound.add("shoot");
+    gameState.shoot = this.sound.add("shoot", {
+      loop: false,
+      volume: gameState.volume / 100,
+    });
     const heal = this.sound.add("heal", {
       loop: false,
       volume: gameState.volume / 100,
