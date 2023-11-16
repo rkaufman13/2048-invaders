@@ -38,27 +38,20 @@ export const findValidXSlot = (gameState) => {
   while (topRowFilledSlots.includes(slot)) {
     slot = rollAnNSidedDie(8);
   }
-  return [slot * 50 + sortedEnemies(gameState)[0].x, slot];
+  return [(slot - 1) * 50 + sortedEnemies(gameState)[0].x, slot];
 };
 
 export const bottomRowIsOrWillBeEmpty = (hitBug, oldBug, gameState) => {
-  /*this currently accounts for 'there are no enemies remaining with the largest y value of the two bugs we just killed
-    which actually could not be the bottom row lol
-    we need to account for the following states
-    1) both killed bugs were in the bottom row (at the time this is called they will still be alive, because callback hell), and there are or are not bugs remaining in that row
-    2) one killed bug was in the bottom row, and there are or are not bugs in that row
-    3) neither killed bug was in the bottom row, in which case the bottom row is never empty
+  /*we need to account for the following states, which is actually quite simple:
+    1) if both killed bugs were in the bottom row, When the callback is completed, there will be (at least) one new bug in this row, so the row cannot be empty.
+    2) if one killed bug was in the bottom row, and there are or are not bugs in that row. if the more recently "touched" bug is in the bottom row, the row cannot be empty.
+    2.5) if the less recently "touched" bug is in the bottom row, it may be the last bug in the row.
+    3) neither killed bug was in the bottom row, in which case the bottom row cannot be empty.
     */
   const sortedEnemies = sortedEnemiesY(gameState);
   const bottomRow = sortedEnemies[sortedEnemies.length - 1].row;
   if (
-    hitBug.row == bottomRow &&
     oldBug.row == bottomRow &&
-    sortedEnemies.filter((enemy) => enemy.row == bottomRow).length == 2
-  ) {
-    return true;
-  } else if (
-    (hitBug.row == bottomRow || oldBug.row == bottomRow) &&
     sortedEnemies.filter((enemy) => enemy.row == bottomRow).length == 1
   ) {
     return true;
@@ -166,16 +159,20 @@ export function genTimedSpawn(gameState) {
 export function generateBugInTopRow(gameState, baseBug) {
   if (topRowHasSpace(gameState)) {
     const [xVal, col] = findValidXSlot(gameState);
+    console.log("column chosen in partially empty row:", col);
     const yVal = sortedEnemiesY(gameState)[0].y;
     const row = sortedEnemiesY(gameState)[0].row;
     spawnBug(xVal, yVal, getRandBug(baseBug), row, col, gameState);
   } else {
     const col = rollAnNSidedDie(8);
-    const xVal = col * 50 + sortedEnemies(gameState)[0].x;
+    console.log("column chosen in new (empty) row:", col);
+    const xVal = (col - 1) * 50 + sortedEnemies(gameState)[0].x;
     const yVal = sortedEnemiesY(gameState)[0].y - 50;
     const row = sortedEnemiesY(gameState)[0].row - 1;
     spawnBug(xVal, yVal, getRandBug(baseBug), row, col, gameState);
-    gameState.enemies.getChildren().forEach((bug) => (bug.y += 20));
+    while (sortedEnemiesY(gameState)[0].y < TOP_BUFFER) {
+      gameState.enemies.getChildren().forEach((bug) => (bug.y += 20));
+    }
   }
 }
 

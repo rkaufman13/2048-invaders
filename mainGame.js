@@ -27,6 +27,7 @@ const gameState = { ...initialValues };
 const youWin = (scene) => {
   gameState.active = false;
   gameState.pelletsLoop.destroy();
+  gameState.megaPowerUpLoop.destroy();
   scene.physics.pause();
   scene.add.text(200, 300, "You Win", { fontSize: "15px", fill: "#000" });
 };
@@ -339,7 +340,7 @@ export default class mainGame extends Phaser.Scene {
         if (FINISHED_SPRITES_ARRAY.includes(parseInt(hitBug.texture.key))) {
           hitBug.setFrame(1);
         } else {
-          hitBug.alpha = 0.5;
+          hitBug.setAlpha(0.5);
         }
         scene.firstHit.play();
       } else {
@@ -347,7 +348,7 @@ export default class mainGame extends Phaser.Scene {
         if (oldBug === hitBug) {
           gameState.activeBug = 0;
           scene.secondHitBad.play();
-          hitBug.alpha = 1;
+          hitBug.setAlpha(1);
           //temp workaround until all images are made
           if (FINISHED_SPRITES_ARRAY.includes(parseInt(hitBug.texture.key))) {
             hitBug.setFrame(0);
@@ -364,6 +365,7 @@ export default class mainGame extends Phaser.Scene {
           gameState.activeBug = 0;
           scene.secondHitGood.play();
           tweenAndDestroy(hitBug, oldBug, xVal, yVal, scene);
+
           spawnBug(
             hitBug.x,
             yVal,
@@ -372,13 +374,6 @@ export default class mainGame extends Phaser.Scene {
             hitBug.col,
             gameState
           );
-          updateScore(gameState);
-          scoreText.setText(`Your score: ${gameState.sumValueOfEnemies}`);
-
-          gameState.randomspawncounter++;
-          if (rollAnNSidedDie(3) === 0) {
-            gameState.randomspawncounter++;
-          }
           if (rowIsEmpty) {
             gameState.enemies.getChildren().forEach((bug) => {
               scene.tweens.add({
@@ -389,6 +384,14 @@ export default class mainGame extends Phaser.Scene {
               });
             });
           }
+          updateScore(gameState);
+          scoreText.setText(`Your score: ${gameState.sumValueOfEnemies}`);
+
+          gameState.randomspawncounter++;
+          if (rollAnNSidedDie(3) === 0) {
+            gameState.randomspawncounter++;
+          }
+
           if (gameState.randomspawncounter >= 2) {
             generateBugInTopRow(gameState, hitBug);
             gameState.randomspawncounter = 0;
@@ -398,8 +401,13 @@ export default class mainGame extends Phaser.Scene {
         //otherwise, they hit two different bugs but NOT ones that match, so we reset
         else {
           gameState.activeBug = hitBug;
-          hitBug.alpha = 0.5;
-          oldBug.alpha = 1;
+          if (FINISHED_SPRITES_ARRAY.includes(parseInt(hitBug.texture.key))) {
+            hitBug.setFrame(1);
+            oldBug.setFrame(0);
+          } else {
+            hitBug.setAlpha(0.5);
+            oldBug.setAlpha(1);
+          }
           scene.secondHitBad.play();
         }
       }
