@@ -1,11 +1,8 @@
 import {
   sortedEnemies,
-  sortedEnemiesY,
   rollAnNSidedDie,
-  findValidXSlot,
   updateScore,
   powerOf2,
-  topRowHasSpace,
   spawnBug,
   tweenAndDestroy,
   bottomRowIsOrWillBeEmpty,
@@ -13,8 +10,9 @@ import {
   genPellet,
   genDelay,
   genMegaMagnet,
-  getRandBug,
   addBackground,
+  generateBugInTopRow,
+  genTimedSpawn,
 } from "./helpermethods.js";
 
 import {
@@ -101,7 +99,7 @@ export default class mainGame extends Phaser.Scene {
     this.load.audio("shoot", "assets/audio/Shoot_1.wav");
     this.load.audio("heal", "assets/audio/Power_Up_2.wav");
     this.load.audio("hitSelf", "assets/audio/Hit_3.wav");
-    this.load.audio("bgm", "assets/audio/spaceship_shooter.mp3");
+    this.load.audio("bgm", "assets/audio/Race to Mars.mp3");
     this.load.audio("explosion", "assets/audio/Explosion.wav");
     this.load.audio(
       "generateMagnet",
@@ -214,10 +212,10 @@ export default class mainGame extends Phaser.Scene {
     gameState.enemies = this.physics.add.group();
 
     //create 2 rows of 8 enemies with value 4
-    createStartingEnemies(gameState, "4", 1, 2);
+    createStartingEnemies(gameState, 4, 1, 2);
 
     //create 2 rows of 8 enemies with value 2
-    createStartingEnemies(gameState, "2", 3, 4);
+    createStartingEnemies(gameState, 2, 3, 4);
 
     gameState.cursors = this.input.keyboard.createCursorKeys();
     gameState.pauseButton = this.input.keyboard.addKey("P");
@@ -246,6 +244,14 @@ export default class mainGame extends Phaser.Scene {
       args: [gameState],
       callbackScope: this,
       loop: true,
+    });
+
+    this.timedSpawn = this.time.addEvent({
+      delay: 1000 * 15,
+      callback: genTimedSpawn,
+      loop: true,
+      callbackScope: this,
+      args: [gameState],
     });
 
     // Uses the physics plugin to create the player
@@ -323,7 +329,7 @@ export default class mainGame extends Phaser.Scene {
       hitBug.setVelocityY(0);
 
       //check if you won the game by hitting the 2048 tile
-      if (hitBug.texture.key === "2048") {
+      if (parseInt(hitBug.texture.key) === 2048) {
         youWin(scene);
       }
       if (gameState.activeBug === 0) {
@@ -331,9 +337,10 @@ export default class mainGame extends Phaser.Scene {
         //temp workaround until all images are made
         if (FINISHED_SPRITES_ARRAY.includes(hitBug.texture.key)) {
           hitBug.setFrame(1);
-          scene.firstHit.play();
+        } else {
+          hitBug.alpha = 0.5;
         }
-        hitBug.alpha = 0.5;
+        scene.firstHit.play();
       } else {
         const oldBug = gameState.activeBug;
         if (oldBug === hitBug) {
@@ -344,10 +351,9 @@ export default class mainGame extends Phaser.Scene {
           if (FINISHED_SPRITES_ARRAY.includes(hitBug.texture.key)) {
             hitBug.setFrame(0);
           }
-        } else if (hitBug.texture.key === oldBug.texture.key) {
+        } else if (hitBug.value === oldBug.value) {
           const yVal = Math.ceil(hitBug.y / 10) * 10;
-          const hitBugRow = hitBug.row;
-          const doubleBugVal = hitBug.texture.key * 2;
+          const doubleBugVal = hitBug.value * 2;
           const xVal = hitBug.x;
           const rowIsEmpty = bottomRowIsOrWillBeEmpty(
             hitBug,
@@ -357,7 +363,14 @@ export default class mainGame extends Phaser.Scene {
           gameState.activeBug = 0;
           scene.secondHitGood.play();
           tweenAndDestroy(hitBug, oldBug, xVal, yVal, scene);
-          spawnBug(xVal, yVal, doubleBugVal, hitBugRow, gameState);
+          spawnBug(
+            hitBug.x,
+            yVal,
+            doubleBugVal,
+            hitBug.row,
+            hitBug.col,
+            gameState
+          );
           updateScore(gameState);
           scoreText.setText(`Your score: ${gameState.sumValueOfEnemies}`);
 
@@ -377,20 +390,7 @@ export default class mainGame extends Phaser.Scene {
             });
           }
           if (gameState.randomspawncounter >= 2) {
-            //todo DRY
-            if (topRowHasSpace(gameState)) {
-              const yVal = sortedEnemiesY(gameState)[0].y;
-              const row = sortedEnemiesY(gameState)[0].row;
-              const xVal = findValidXSlot(gameState);
-              spawnBug(xVal, yVal, getRandBug(hitBug), row, gameState);
-            } else {
-              const xVal = findValidXSlot(gameState);
-              const yVal = sortedEnemiesY(gameState)[0].y - 50;
-              //todo replace with call to spawn method
-              const row = sortedEnemiesY(gameState)[0].row - 1;
-              spawnBug(xVal, yVal, getRandBug(hitBug), row, gameState);
-              gameState.enemies.getChildren().forEach((bug) => (bug.y += 10));
-            }
+            generateBugInTopRow(gameState, hitBug);
             gameState.randomspawncounter = 0;
           }
         }
@@ -410,12 +410,11 @@ export default class mainGame extends Phaser.Scene {
       hitBug.setVelocityY(0);
       const hitBugX = hitBug.x;
       const hitBugY = hitBug.y;
-      const hitBugValue = hitBug.texture.key;
-      const hitBugRow = hitBug.row;
+      const hitBugValue = parseInt(hitBug.texture.key);
 
       const matchingEnemies = gameState.enemies
         .getChildren()
-        .filter((enemy) => enemy.texture.key == hitBugValue);
+        .filter((enemy) => parseInt(enemy.texture.key) == hitBugValue);
 
       const matchingEnemiesValues = matchingEnemies
         .map((enemy) => parseInt(enemy.texture.key))
@@ -442,7 +441,22 @@ export default class mainGame extends Phaser.Scene {
         });
       });
 
-      spawnBug(hitBugX, hitBugY, newBugValue, hitBugRow, gameState);
+      spawnBug(
+        hitBugX,
+        hitBugY,
+        newBugValue,
+        hitBug.row,
+        hitBug.col,
+        gameState
+      );
+      //cleanup--if any bugs were in a hit state we want to reset everything
+      gameState.activeBug = 0;
+      gameState.enemies.getChildren().forEach((enemy) => {
+        if (FINISHED_SPRITES_ARRAY.includes(enemy.texture.key)) {
+          enemy.setFrame(0);
+        }
+        enemy.setAlpha(1);
+      });
     }
 
     //main game loop
