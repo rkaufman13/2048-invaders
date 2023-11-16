@@ -13,9 +13,12 @@ export function sortedEnemiesY(gameState) {
   return gameState.enemies.getChildren().sort((a, b) => a.y - b.y);
 }
 
+export function sortedEnemiesRow(gameState) {
+  return gameState.enemies.getChildren().sort((a, b) => a.row - b.row);
+}
+
 export function rollAnNSidedDie(n) {
-  const num = Math.floor(Math.random() * n);
-  return num;
+  return Math.floor(Math.random() * n) + 1;
 }
 
 export const updateScore = (gameState) => {
@@ -26,33 +29,30 @@ export const updateScore = (gameState) => {
 };
 
 export const findValidXSlot = (gameState) => {
+  const topRow = sortedEnemiesRow(gameState)[0].row;
+  const topRowFilledSlots = gameState.enemies
+    .getChildren()
+    .filter((enemy) => enemy.row == topRow)
+    .map((enemy) => enemy.col);
   let slot = rollAnNSidedDie(8);
-  while (gameState.topRow[slot] != null) {
+  while (topRowFilledSlots.includes(slot)) {
     slot = rollAnNSidedDie(8);
   }
-  gameState.topRow[slot] = slot;
-
-  return slot * 50 + sortedEnemies(gameState)[0].x;
+  return [(slot - 1) * 50 + sortedEnemies(gameState)[0].x, slot];
 };
 
 export const bottomRowIsOrWillBeEmpty = (hitBug, oldBug, gameState) => {
-  /*this currently accounts for 'there are no enemies remaining with the largest y value of the two bugs we just killed
-    which actually could not be the bottom row lol
-    we need to account for the following states
-    1) both killed bugs were in the bottom row (at the time this is called they will still be alive, because callback hell), and there are or are not bugs remaining in that row
-    2) one killed bug was in the bottom row, and there are or are not bugs in that row
-    3) neither killed bug was in the bottom row, in which case the bottom row is never empty
+  /*we need to account for the following states, which is actually quite simple:
+    1) if both killed bugs were in the bottom row, When the callback is completed, there will be (at least) one new bug in this row, so the row cannot be empty.
+    2) if one killed bug was in the bottom row, and there are or are not bugs in that row. if the more recently "touched" bug is in the bottom row, the row cannot be empty.
+    2.5) if the less recently "touched" bug is in the bottom row, it may be the last bug in the row.
+    3) neither killed bug was in the bottom row, in which case the bottom row cannot be empty.
     */
   const sortedEnemies = sortedEnemiesY(gameState);
+  const bottomRow = sortedEnemies[sortedEnemies.length - 1].row;
   if (
-    hitBug.row == 4 &&
-    oldBug.row == 4 &&
-    sortedEnemies.filter((enemy) => enemy.row == 4).length == 2
-  ) {
-    return true;
-  } else if (
-    (hitBug.row == 4 || oldBug.row == 4) &&
-    sortedEnemies.filter((enemy) => enemy.row == 4).length == 1
+    oldBug.row == bottomRow &&
+    sortedEnemies.filter((enemy) => enemy.row == bottomRow).length == 1
   ) {
     return true;
   }
@@ -64,28 +64,23 @@ export function powerOf2(v) {
 }
 
 export function topRowHasSpace(gameState) {
-  //todo now that we have a row property on enemies, can this be made more efficient?
-  if (
-    Object.values(gameState.topRow).filter((slot) => slot != null).length == 8
-  ) {
-    const newTopRow = Object.fromEntries(
-      Object.keys(gameState.topRow).map((key) => [key, null])
-    );
-    gameState.topRow = newTopRow;
-  }
-  return (
-    Object.values(gameState.topRow).filter((slot) => slot != null).length >= 1
-  );
+  const topRow = sortedEnemiesRow(gameState)[0].row;
+  const topRowEmptySlots =
+    8 -
+    gameState.enemies.getChildren().filter((enemy) => enemy.row == topRow)
+      .length;
+  return topRowEmptySlots > 0;
 }
 
-export function spawnBug(xVal, yVal, bugVal, row, gameState) {
-  gameState.activeBug = 0;
+export function spawnBug(xVal, yVal, bugVal, row, col, gameState) {
   const newEnemy = gameState.enemies
     .create(xVal, yVal, bugVal)
     .setScale(gameState.scale)
     .setGravityY(-200)
     .setName(`Bug ${xVal}:${yVal}`);
   newEnemy.row = row;
+  newEnemy.col = col;
+  newEnemy.value = bugVal;
 }
 
 export function tweenAndDestroy(hitBug, oldBug, xVal, yVal, scene) {
@@ -111,7 +106,8 @@ export function createStartingEnemies(gameState, value, firstRow, secondRow) {
         .setGravityY(-200)
         .setName(`Bug ${xVal}:${yVal}`);
       enemy.row = yVal;
-      enemy.value = enemy.texture.key;
+      enemy.col = xVal;
+      enemy.value = value;
     }
   }
 }
@@ -150,8 +146,38 @@ export function genMegaMagnet(gameState) {
   gameState.megaPowerUpPickup = megaMagnet;
 }
 
+export function genTimedSpawn(gameState) {
+  const lowestValEnemy = gameState.enemies
+    .getChildren()
+    .sort(
+      (enemy, enemy2) =>
+        parseInt(enemy.texture.key) - parseInt(enemy2.texture.key)
+    )[0];
+  generateBugInTopRow(gameState, lowestValEnemy);
+}
+
+export function generateBugInTopRow(gameState, baseBug) {
+  if (topRowHasSpace(gameState)) {
+    const [xVal, col] = findValidXSlot(gameState);
+    console.log("column chosen in partially empty row:", col);
+    const yVal = sortedEnemiesY(gameState)[0].y;
+    const row = sortedEnemiesY(gameState)[0].row;
+    spawnBug(xVal, yVal, getRandBug(baseBug), row, col, gameState);
+  } else {
+    const col = rollAnNSidedDie(8);
+    console.log("column chosen in new (empty) row:", col);
+    const xVal = (col - 1) * 50 + sortedEnemies(gameState)[0].x;
+    const yVal = sortedEnemiesY(gameState)[0].y - 50;
+    const row = sortedEnemiesY(gameState)[0].row - 1;
+    spawnBug(xVal, yVal, getRandBug(baseBug), row, col, gameState);
+    while (sortedEnemiesY(gameState)[0].y < TOP_BUFFER) {
+      gameState.enemies.getChildren().forEach((bug) => (bug.y += 20));
+    }
+  }
+}
+
 export function getRandBug(bug) {
-  let basenum = bug.texture.key;
+  let basenum = parseInt(bug.texture.key);
   /*newnum should occasionally be 2
     maybe 1/3 of the time?
     and the rest of the time it should be within 1 power of 2 of the number that was just destroyed
@@ -184,5 +210,5 @@ export function addBackground(scene) {
 }
 
 export function genDelay(gameState) {
-  return 1000;
+  return 1000 - gameState.sumValueOfEnemies / 5;
 }
