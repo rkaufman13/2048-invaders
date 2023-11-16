@@ -124,6 +124,7 @@ export default class mainGame extends Phaser.Scene {
       gameState.bgm.stop();
       gameState.pelletsLoop.destroy();
       gameState.generateMegaMagnets.destroy();
+      scene.timedSpawn.destroy();
       scene.physics.pause();
       scene.add.text(100, 250, "Game Over. Click to restart", {
         fontSize: "15px",
@@ -335,7 +336,7 @@ export default class mainGame extends Phaser.Scene {
       if (gameState.activeBug === 0) {
         gameState.activeBug = hitBug;
         //temp workaround until all images are made
-        if (FINISHED_SPRITES_ARRAY.includes(hitBug.texture.key)) {
+        if (FINISHED_SPRITES_ARRAY.includes(parseInt(hitBug.texture.key))) {
           hitBug.setFrame(1);
         } else {
           hitBug.alpha = 0.5;
@@ -348,7 +349,7 @@ export default class mainGame extends Phaser.Scene {
           scene.secondHitBad.play();
           hitBug.alpha = 1;
           //temp workaround until all images are made
-          if (FINISHED_SPRITES_ARRAY.includes(hitBug.texture.key)) {
+          if (FINISHED_SPRITES_ARRAY.includes(parseInt(hitBug.texture.key))) {
             hitBug.setFrame(0);
           }
         } else if (hitBug.value === oldBug.value) {
@@ -386,7 +387,6 @@ export default class mainGame extends Phaser.Scene {
                 duration: 50,
                 repeat: 0,
               });
-              bug.row++;
             });
           }
           if (gameState.randomspawncounter >= 2) {

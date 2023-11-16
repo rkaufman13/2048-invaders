@@ -18,8 +18,7 @@ export function sortedEnemiesRow(gameState) {
 }
 
 export function rollAnNSidedDie(n) {
-  const num = Math.floor(Math.random() * n);
-  return num;
+  return Math.floor(Math.random() * n) + 1;
 }
 
 export const updateScore = (gameState) => {
@@ -35,7 +34,6 @@ export const findValidXSlot = (gameState) => {
     .getChildren()
     .filter((enemy) => enemy.row == topRow)
     .map((enemy) => enemy.col);
-  console.log(topRowFilledSlots);
   let slot = rollAnNSidedDie(8);
   while (topRowFilledSlots.includes(slot)) {
     slot = rollAnNSidedDie(8);
@@ -215,5 +213,5 @@ export function addBackground(scene) {
 }
 
 export function genDelay(gameState) {
-  return 1000;
+  return 1000 - gameState.sumValueOfEnemies / 5;
 }
