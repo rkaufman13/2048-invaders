@@ -5,7 +5,6 @@ export const initialValues = {
   randomspawncounter: 0,
   sumValueOfEnemies: 0,
   scale: 0.5,
-  rowIsEmpty: false,
 };
 
 export const TOP_BUFFER = 50;
