@@ -32,8 +32,8 @@ export default class Settings extends Phaser.Scene {
 
     let volume = 100;
     this.add.image(225, 225, "bg-box");
-    this.add.text(150, 50, "Settings", basicFontConfig);
-    this.add.text(150, 175, "How to Play", basicFontConfig);
+    this.add.text(50, 50, "Settings", basicFontConfig);
+    this.add.text(50, 175, "How to Play", basicFontConfig);
     this.add.text(50, 200, instructions, {
       fontSize: "15px",
       fill: "#fff",
@@ -42,15 +42,21 @@ export default class Settings extends Phaser.Scene {
     this.add.image(55, 380, "heal").setScale(2);
     this.add.text(65, 375, "<-Heals you", basicFontConfig);
     this.add.image(200, 380, "magnet").setScale(0.25);
-    this.add.text(220, 375, "<-???", basicFontConfig);
-
+    this.add.text(220, 375, "<-press shift to use mega-magnet", {
+      ...basicFontConfig,
+      wordWrap: { width: 150 },
+    });
+    this.add.text(350, 375, "P=pause", basicFontConfig);
     this.add.text(100, 100, "Volume", basicFontConfig);
     this.add.image(220, 105, "slider");
     const handle = this.add.image(250, 105, "handle");
     const leftButton = this.add.image(170, 103, "leftclick").setInteractive();
     const rightButton = this.add.image(270, 103, "rightclick").setInteractive();
 
-    const closeButton = this.add.image(410, 40, "close").setInteractive();
+    const closeButton = this.add
+      .image(410, 40, "close")
+      .setInteractive()
+      .setScale(2);
 
     leftButton.on("pointerup", () => {
       if (volume >= 10) {

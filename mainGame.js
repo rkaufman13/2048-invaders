@@ -62,12 +62,31 @@ export default class mainGame extends Phaser.Scene {
       frameWidth: 83,
       frameHeight: 90,
     });
-    this.load.image("64", "assets/64.png");
-    this.load.image("128", "assets/128.png");
-    this.load.image("256", "assets/256.png");
-    this.load.image("512", "assets/512.png");
-    this.load.image("1024", "assets/1024.png");
-    this.load.image("2048", "assets/2048.png");
+    this.load.spritesheet("64", "assets/64.png", {
+      frameWidth: 83,
+      frameHeight: 90,
+    });
+    this.load.spritesheet("128", "assets/128.png", {
+      frameWidth: 83,
+      frameHeight: 90,
+    });
+    this.load.spritesheet("256", "assets/256.png", {
+      frameWidth: 83,
+      frameHeight: 90,
+    });
+    this.load.spritesheet("512", "assets/512.png", {
+      frameWidth: 83,
+      frameHeight: 90,
+    });
+    this.load.spritesheet("1024", "assets/1024.png", {
+      frameWidth: 83,
+      frameHeight: 90,
+    });
+    this.load.spritesheet("2048", "assets/2048.png", {
+      frameWidth: 83,
+      frameHeight: 90,
+    });
+
     this.load.image("platform", "assets/platform.png");
     this.load.image("codey", "assets/ship.png");
     this.load.image("enemyBullet", "assets/enemybullet.png");
@@ -93,6 +112,11 @@ export default class mainGame extends Phaser.Scene {
         frameHeight: 142,
       }
     );
+    this.load.spritesheet(
+      "megaPowerup-inventory",
+      "assets/mega-powerup-inventory.png",
+      { frameWidth: 142, frameHeight: 142 }
+    );
     this.load.spritesheet("pauseButton", "assets/pause_play.png", {
       frameWidth: 12,
       frameHeight: 13,
@@ -101,6 +125,7 @@ export default class mainGame extends Phaser.Scene {
     this.load.audio("heal", "assets/audio/Power_Up_2.wav");
     this.load.audio("hitSelf", "assets/audio/Hit_3.wav");
     this.load.audio("bgm", "assets/audio/Race to Mars.mp3");
+
     this.load.audio("explosion", "assets/audio/Explosion.wav");
     this.load.audio(
       "generateMagnet",
@@ -186,6 +211,9 @@ export default class mainGame extends Phaser.Scene {
       volume: gameState.volume / 100,
     });
     gameState.bgm.play();
+    this.events.on("resume", () => {
+      gameState.bgm.resume();
+    });
 
     // When gameState.active is false, the game will listen for a pointerup event and restart when the event happens
     this.input.on("pointerup", () => {
@@ -206,6 +234,11 @@ export default class mainGame extends Phaser.Scene {
         backgroundColor: "#000",
       }
     );
+
+    //create powerup inventory slot
+    this.inventory = this.add
+      .image(100, 15, "megaPowerup-inventory", 0)
+      .setScale(0.2);
 
     // Creating static platforms
     const platforms = this.physics.add.staticGroup();
@@ -321,6 +354,7 @@ export default class mainGame extends Phaser.Scene {
         megaPowerUp.destroy();
         gameState.genMegaMagnetFX.stop();
         powerUpGained.play();
+        this.inventory.setFrame(1);
         gameState.timeForMegaPowerUp = true;
       }
     );
@@ -336,23 +370,14 @@ export default class mainGame extends Phaser.Scene {
       }
       if (gameState.activeBug === 0) {
         gameState.activeBug = hitBug;
-        //temp workaround until all images are made
-        if (FINISHED_SPRITES_ARRAY.includes(parseInt(hitBug.texture.key))) {
-          hitBug.setFrame(1);
-        } else {
-          hitBug.setAlpha(0.5);
-        }
+        hitBug.setFrame(1);
         scene.firstHit.play();
       } else {
         const oldBug = gameState.activeBug;
         if (oldBug === hitBug) {
           gameState.activeBug = 0;
           scene.secondHitBad.play();
-          hitBug.setAlpha(1);
-          //temp workaround until all images are made
-          if (FINISHED_SPRITES_ARRAY.includes(parseInt(hitBug.texture.key))) {
-            hitBug.setFrame(0);
-          }
+          hitBug.setFrame(0);
         } else if (hitBug.value === oldBug.value) {
           const yVal = Math.ceil(hitBug.y / 10) * 10;
           const doubleBugVal = hitBug.value * 2;
@@ -401,13 +426,8 @@ export default class mainGame extends Phaser.Scene {
         //otherwise, they hit two different bugs but NOT ones that match, so we reset
         else {
           gameState.activeBug = hitBug;
-          if (FINISHED_SPRITES_ARRAY.includes(parseInt(hitBug.texture.key))) {
-            hitBug.setFrame(1);
-            oldBug.setFrame(0);
-          } else {
-            hitBug.setAlpha(0.5);
-            oldBug.setAlpha(1);
-          }
+          hitBug.setFrame(1);
+          oldBug.setFrame(0);
           scene.secondHitBad.play();
         }
       }
@@ -460,10 +480,7 @@ export default class mainGame extends Phaser.Scene {
       //cleanup--if any bugs were in a hit state we want to reset everything
       gameState.activeBug = 0;
       gameState.enemies.getChildren().forEach((enemy) => {
-        if (FINISHED_SPRITES_ARRAY.includes(enemy.texture.key)) {
-          enemy.setFrame(0);
-        }
-        enemy.setAlpha(1);
+        enemy.setFrame(0);
       });
     }
 
@@ -540,6 +557,7 @@ export default class mainGame extends Phaser.Scene {
       if (Phaser.Input.Keyboard.JustDown(gameState.cursors.shift)) {
         if (gameState.timeForMegaPowerUp) {
           gameState.timeForMegaPowerUp = false;
+          this.inventory.setFrame(0);
           gameState.megaPowerUp = gameState.megaPowerUps
             .create(gameState.player.x, gameState.player.y, "megaPowerup")
             .setGravityY(-400)
@@ -553,8 +571,8 @@ export default class mainGame extends Phaser.Scene {
       }
 
       if (Phaser.Input.Keyboard.JustDown(gameState.pauseButton)) {
-        this.scene.launch("paused");
         gameState.bgm.pause();
+        this.scene.launch("paused");
         this.scene.pause();
       }
       // Add logic for winning condition and enemy movements below:
