@@ -10,7 +10,6 @@ export const initialValues = {
 export const TOP_BUFFER = 50;
 export const LEFT_BUFFER = 25;
 export const RIGHT_BUFFER = 15;
-export const FINISHED_SPRITES_ARRAY = [2, 4, 8, 16, 32];
 export const basicFontConfig = {
   fontSize: "15px",
   fill: "#fff",

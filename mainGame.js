@@ -8,19 +8,13 @@ import {
   bottomRowIsOrWillBeEmpty,
   createStartingEnemies,
   genPellet,
-  genDelay,
   genMegaMagnet,
   addBackground,
   generateBugInTopRow,
   genTimedSpawn,
 } from "./helpermethods.js";
 
-import {
-  initialValues,
-  LEFT_BUFFER,
-  RIGHT_BUFFER,
-  FINISHED_SPRITES_ARRAY,
-} from "./constants.js";
+import { initialValues, LEFT_BUFFER, RIGHT_BUFFER } from "./constants.js";
 
 const gameState = { ...initialValues };
 
@@ -266,7 +260,7 @@ export default class mainGame extends Phaser.Scene {
     gameState.playerBullets = this.physics.add.group();
 
     gameState.pelletsLoop = this.time.addEvent({
-      delay: genDelay(gameState),
+      delay: 1000,
       callback: genPellet,
       args: [gameState, pellets],
       callbackScope: this,
@@ -282,7 +276,7 @@ export default class mainGame extends Phaser.Scene {
     });
 
     this.timedSpawn = this.time.addEvent({
-      delay: 1000 * 15,
+      delay: 1000 * 10,
       callback: genTimedSpawn,
       loop: true,
       callbackScope: this,
