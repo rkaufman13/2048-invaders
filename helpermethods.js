@@ -28,14 +28,13 @@ export const updateScore = (gameState) => {
   gameState.sumValueOfEnemies = newScore;
 };
 
-export const findValidXSlot = (gameState) => {
-  const topRow = sortedEnemiesRow(gameState)[0].row;
-  const topRowFilledSlots = gameState.enemies
+export const findValidXSlot = (gameState, row) => {
+  const filledSlots = gameState.enemies
     .getChildren()
-    .filter((enemy) => enemy.row == topRow)
+    .filter((enemy) => enemy.row == row)
     .map((enemy) => enemy.col);
   let slot = rollAnNSidedDie(8);
-  while (topRowFilledSlots.includes(slot)) {
+  while (filledSlots.includes(slot)) {
     slot = rollAnNSidedDie(8);
   }
   return [(slot - 1) * 50 + sortedEnemies(gameState)[0].x, slot];
@@ -63,13 +62,11 @@ export function powerOf2(v) {
   return v && !(v & (v - 1));
 }
 
-export function topRowHasSpace(gameState) {
-  const topRow = sortedEnemiesRow(gameState)[0].row;
-  const topRowEmptySlots =
+export function rowHasSpace(gameState, row) {
+  const rowEmptySlots =
     8 -
-    gameState.enemies.getChildren().filter((enemy) => enemy.row == topRow)
-      .length;
-  return topRowEmptySlots > 0;
+    gameState.enemies.getChildren().filter((enemy) => enemy.row == row).length;
+  return rowEmptySlots > 0;
 }
 
 export function spawnBug(xVal, yVal, bugVal, row, col, gameState) {
@@ -112,6 +109,28 @@ export function createStartingEnemies(gameState, value, firstRow, secondRow) {
   }
 }
 
+function makeBullet(velocityX, velocityY, name, randomBug, pellets) {
+  console.log(`making bullet for ${randomBug.value}`);
+  pellets
+    .create(randomBug.x, randomBug.y, "enemyBullet")
+    .setScale(1.5)
+    .setName(name)
+    .setVelocityX(velocityX)
+    .setVelocityY(velocityY);
+}
+
+function makeBullets(velocities, name, randomBug, pellets) {
+  for (let i = 0; i < velocities.length; i++) {
+    makeBullet(
+      velocities[i][0],
+      velocities[i][1],
+      `bullet for ${name} bug`,
+      randomBug,
+      pellets
+    );
+  }
+}
+
 export function genPellet(gameState, pellets) {
   let randomBug = Phaser.Utils.Array.GetRandom(gameState.enemies.getChildren());
   //most of the time we spawn a enemy projectile.
@@ -126,39 +145,156 @@ export function genPellet(gameState, pellets) {
     powerUp.setScale(2.5);
     powerUp.setVelocityY(80);
   } else {
-    const newPellet = pellets
-      .create(randomBug.x, randomBug.y, "enemyBullet")
-      .setScale(1.5);
-    newPellet.setVelocityY(50);
+    const bugValue = randomBug.value;
+    switch (bugValue) {
+      case 2:
+        makeBullets([[0, 50]], 2, randomBug, pellets);
+        break;
+      case 4:
+        makeBullets([[0, 100]], 4, randomBug, pellets);
+        break;
+      case 8:
+        makeBullets(
+          [
+            [0, 50],
+            [0, 75],
+          ],
+          8,
+          randomBug,
+          pellets
+        );
+        break;
+      case 16:
+        makeBullets(
+          [
+            [50, 50],
+            [-50, 50],
+          ],
+          16,
+          randomBug,
+          pellets
+        );
+        break;
+      case 32:
+        makeBullets(
+          [
+            [50, 100],
+            [-50, 100],
+          ],
+          32,
+          randomBug,
+          pellets
+        );
+        break;
+      case 64:
+        makeBullets(
+          [
+            [50, 50],
+            [50, 75],
+            [-50, 50],
+            [-50, 75],
+          ],
+          64,
+          randomBug,
+          pellets
+        );
+        break;
+      case 128:
+        makeBullets(
+          [
+            [75, 75],
+            [75, 100],
+            [-75, 75],
+            [-75, 100],
+          ],
+          128,
+          randomBug,
+          pellets
+        );
+        break;
+      case 256:
+        makeBullets(
+          [
+            [50, 75],
+            [75, 75],
+            [75, 100],
+            [-50, 75],
+            [-75, 75],
+            [-75, 100],
+          ],
+          256,
+          randomBug,
+          pellets
+        );
+        break;
+      case 512:
+        makeBullets(
+          [
+            [0, 75],
+            [50, 75],
+            [75, 75],
+            [75, 100],
+            [-50, 75],
+            [-75, 75],
+            [-75, 100],
+          ],
+          512,
+          randomBug,
+          pellets
+        );
+        break;
+      case 1024:
+        makeBullets(
+          [
+            [50, 75],
+            [75, 75],
+            [75, 100],
+            [100, 100],
+            [-50, 75],
+            [-75, 75],
+            [-75, 100],
+            [-100, 100],
+          ],
+          1024,
+          randomBug,
+          pellets
+        );
+        break;
+      default:
+        break;
+    }
   }
 }
 
 export function genMegaMagnet(gameState) {
-  const lowestYVal =
-    sortedEnemiesY(gameState)[sortedEnemiesY(gameState).length - 1].y;
   const megaMagnet = gameState.megaPowerUpPickups
-    .create(rollAnNSidedDie(450), lowestYVal, "megaPowerup-pickup")
+    .create(rollAnNSidedDie(450), 100, "megaPowerup-pickup")
     .setScale(0.25)
     .setName("megaMagnetPickup");
   megaMagnet.play("megaMagnetPickupAnim");
   gameState.genMegaMagnetFX.play();
-  megaMagnet.setVelocityY(30);
+  megaMagnet.setVelocityY(20);
   gameState.megaPowerUpPickup = megaMagnet;
 }
 
 export function genTimedSpawn(gameState) {
-  const lowestValEnemy = gameState.enemies
-    .getChildren()
-    .sort(
-      (enemy, enemy2) =>
-        parseInt(enemy.texture.key) - parseInt(enemy2.texture.key)
-    )[0];
-  generateBugInTopRow(gameState, lowestValEnemy);
+  if (rollAnNSidedDie(2) == 1) {
+    const lowestValEnemy = gameState.enemies
+      .getChildren()
+      .sort(
+        (enemy, enemy2) =>
+          parseInt(enemy.texture.key) - parseInt(enemy2.texture.key)
+      )[0];
+    generateBugInTopRow(gameState, lowestValEnemy);
+  } else {
+    generateBugInBottomRow(gameState);
+  }
 }
 
 export function generateBugInTopRow(gameState, baseBug) {
-  if (topRowHasSpace(gameState)) {
-    const [xVal, col] = findValidXSlot(gameState);
+  if (rowHasSpace(gameState, sortedEnemiesRow(gameState)[0].row)) {
+    const topRow = sortedEnemiesRow(gameState)[0].row;
+    const [xVal, col] = findValidXSlot(gameState, topRow);
     console.log("column chosen in partially empty row:", col);
     const yVal = sortedEnemiesY(gameState)[0].y;
     const row = sortedEnemiesY(gameState)[0].row;
@@ -176,14 +312,26 @@ export function generateBugInTopRow(gameState, baseBug) {
   }
 }
 
+function generateBugInBottomRow(gameState) {
+  const bottomRow =
+    sortedEnemiesRow(gameState)[sortedEnemiesRow(gameState).length - 1].row;
+  if (rowHasSpace(gameState, bottomRow)) {
+    const [xVal, col] = findValidXSlot(gameState, bottomRow);
+    const yVal =
+      sortedEnemiesY(gameState)[sortedEnemiesY(gameState).length - 1].y;
+    const row =
+      sortedEnemiesY(gameState)[sortedEnemiesY(gameState).length - 1].row;
+    spawnBug(xVal, yVal, 2, row, col, gameState);
+  }
+}
+
 export function getRandBug(bug) {
   let basenum = parseInt(bug.texture.key);
-  /*newnum should occasionally be 2
-    maybe 1/3 of the time?
+  /*newnum should frequently be 2
     and the rest of the time it should be within 1 power of 2 of the number that was just destroyed
     //*/
   let isTwo = rollAnNSidedDie(3);
-  if (isTwo == 1) {
+  if (isTwo != 1) {
     return 2;
   } else {
     let choices = [basenum / 2, basenum / 2, basenum, basenum * 2];
@@ -207,8 +355,4 @@ export function addBackground(scene) {
   let scaleY = scene.cameras.main.height / background.height;
   let scale = Math.max(scaleX, scaleY);
   background.setScale(scale).setScrollFactor(0);
-}
-
-export function genDelay(gameState) {
-  return 1000 - gameState.sumValueOfEnemies / 5;
 }
