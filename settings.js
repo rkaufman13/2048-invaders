@@ -32,13 +32,15 @@ export default class Settings extends Phaser.Scene {
 
     let volume = 100;
     this.add.image(225, 225, "bg-box");
-    this.add.text(50, 50, "Settings", basicFontConfig);
-    this.add.text(50, 175, "How to Play", basicFontConfig);
-    this.add.text(50, 200, instructions, {
+    this.add.text(50, 50, "Settings", { fontSize: "24px", fill: "#fff" });
+    this.add.text(50, 125, "How to Play", { fontSize: "24px", fill: "#fff" });
+    this.add.text(50, 150, instructions, {
       fontSize: "15px",
       fill: "#fff",
       wordWrap: { width: 380, useAdvancedWrap: true },
     });
+    this.add.text(50, 315, "Arrow keys or WASD: move", basicFontConfig);
+    this.add.text(50, 340, "Space bar: fire      P: pause", basicFontConfig);
     this.add.image(55, 380, "heal").setScale(2);
     this.add.text(65, 375, "<-Heals you", basicFontConfig);
     this.add.image(200, 380, "magnet").setScale(0.25);

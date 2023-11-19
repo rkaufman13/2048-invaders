@@ -16,9 +16,14 @@ import {
   moveEnemiesDown,
 } from "./helpermethods.js";
 
-import { initialValues, LEFT_BUFFER, RIGHT_BUFFER } from "./constants.js";
+import {
+  initialValues,
+  LEFT_BUFFER,
+  RIGHT_BUFFER,
+  basicFontConfig,
+} from "./constants.js";
 
-const gameState = { ...initialValues };
+let gameState = JSON.parse(JSON.stringify(initialValues));
 
 const youWin = (scene) => {
   this.active = false;
@@ -117,6 +122,10 @@ export default class mainGame extends Phaser.Scene {
       frameWidth: 12,
       frameHeight: 13,
     });
+    this.load.spritesheet("playerHit", "assets/explodey.png", {
+      frameWidth: 8,
+      frameHeight: 8,
+    });
     this.load.audio("shoot", "assets/audio/Shoot_1.wav");
     this.load.audio("heal", "assets/audio/Power_Up_2.wav");
     this.load.audio("hitSelf", "assets/audio/Hit_3.wav");
@@ -148,11 +157,16 @@ export default class mainGame extends Phaser.Scene {
       gameState.generateMegaMagnets.destroy();
       scene.timedSpawn.destroy();
       scene.physics.pause();
-      scene.add.text(100, 250, "Game Over. Click to restart", {
-        fontSize: "15px",
-        fill: "#fff",
-        backgroundColor: "#000",
-      });
+      scene.add.text(
+        100,
+        250,
+        `Game Over. Your final score was ${gameState.sumValueOfEnemies}. Click to restart`,
+        {
+          ...basicFontConfig,
+          backgroundColor: "#000",
+          wordWrap: { width: 300, useAdvancedWrap: true },
+        }
+      );
     }
 
     this.active = true;
@@ -216,7 +230,10 @@ export default class mainGame extends Phaser.Scene {
     this.input.on("pointerup", () => {
       if (this.active === false) {
         this.scene.restart();
-        this.gameState = initialValues;
+        gameState = {
+          ...initialValues,
+          rowToYValue: { ...initialValues["rowToYValue"] },
+        };
       }
     });
 
@@ -251,6 +268,8 @@ export default class mainGame extends Phaser.Scene {
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.pauseButton = this.input.keyboard.addKey("P");
+    this.leftKey = this.input.keyboard.addKey("A");
+    this.rightKey = this.input.keyboard.addKey("D");
 
     const pellets = this.physics.add.group();
 
@@ -265,7 +284,7 @@ export default class mainGame extends Phaser.Scene {
     gameState.pelletsLoop = this.time.addEvent({
       delay: 1000,
       callback: genPellet,
-      args: [gameState, pellets],
+      args: [gameState, pellets, this],
       callbackScope: this,
       loop: true,
     });
@@ -318,12 +337,23 @@ export default class mainGame extends Phaser.Scene {
 
     this.physics.add.collider(pellets, this.player, (player, pellet) => {
       pellet.destroy();
-
+      const playerHitExplosion = this.add
+        .sprite(player.x, player.y, "playerHit", 0)
+        .setScale(2);
+      playerHitExplosion.play("playerHitAnim");
+      this.tweens.add({
+        targets: playerHitExplosion,
+        scale: 7,
+        duration: 100,
+        repeat: 0,
+        onComplete: () => playerHitExplosion.destroy(),
+      });
       if (this.healthBar.frame.name < 3) {
         hitSelf.play();
         this.healthBar.setFrame(this.healthBar.frame.name + 1);
       } else {
         this.healthBar.setFrame(4);
+        this.player.destroy();
         explosion.play();
         gameOver(this);
       }
@@ -512,14 +542,23 @@ export default class mainGame extends Phaser.Scene {
       }),
       repeat: -1,
     });
+    this.anims.create({
+      key: "playerHitAnim",
+      frameRate: 4,
+      frames: this.anims.generateFrameNumbers("playerHit", {
+        start: 0,
+        end: 2,
+      }),
+      repeat: -1,
+    });
   }
 
   update() {
     if (this.active) {
       // If the game is active, then players can control the ship
-      if (this.cursors.left.isDown) {
+      if (this.cursors.left.isDown || this.leftKey.isDown) {
         this.player.setVelocityX(-220);
-      } else if (this.cursors.right.isDown) {
+      } else if (this.cursors.right.isDown || this.rightKey.isDown) {
         this.player.setVelocityX(220);
       } else {
         this.player.setVelocityX(0);
