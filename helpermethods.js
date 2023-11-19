@@ -348,7 +348,7 @@ function generateBugInBottomRow(gameState, scene) {
     const row = getLowestYEnemy(gameState).row;
     spawnBug(xVal, 2, row, col, gameState, scene);
   } else {
-    generateBugInTopRow(gameState, 2, scene);
+    generateBugInTopRow(gameState, { texture: { key: 2 } }, scene); //this is a dirty hack
   }
 }
 

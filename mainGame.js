@@ -268,6 +268,8 @@ export default class mainGame extends Phaser.Scene {
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.pauseButton = this.input.keyboard.addKey("P");
+    this.leftKey = this.input.keyboard.addKey("A");
+    this.rightKey = this.input.keyboard.addKey("D");
 
     const pellets = this.physics.add.group();
 
@@ -554,9 +556,9 @@ export default class mainGame extends Phaser.Scene {
   update() {
     if (this.active) {
       // If the game is active, then players can control the ship
-      if (this.cursors.left.isDown) {
+      if (this.cursors.left.isDown || this.leftKey.isDown) {
         this.player.setVelocityX(-220);
-      } else if (this.cursors.right.isDown) {
+      } else if (this.cursors.right.isDown || this.rightKey.isDown) {
         this.player.setVelocityX(220);
       } else {
         this.player.setVelocityX(0);
