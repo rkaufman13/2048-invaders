@@ -9,9 +9,9 @@ export function sortedEnemies(gameState) {
   return orderedByXCoord;
 }
 
-export function moveEnemiesDown(gameState) {
+export function moveEnemiesDown(gameState, addition = 50) {
   for (const [row, value] of Object.entries(gameState.rowToYValue)) {
-    gameState.rowToYValue[row] = value + 50;
+    gameState.rowToYValue[row] = value + addition;
   }
 }
 
