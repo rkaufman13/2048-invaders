@@ -1,4 +1,4 @@
-import { TOP_BUFFER } from "./constants.js";
+import { TOP_BUFFER, initialValues } from "./constants.js";
 
 // Helper Methods below:
 // sortedEnemies() returns an array of enemy sprites sorted by their x coordinate
@@ -124,7 +124,7 @@ export function createStartingEnemies(gameState, value, firstRow, secondRow) {
   for (let col = 1; col < 9; col++) {
     for (let row = firstRow; row <= secondRow; row++) {
       const enemy = gameState.enemies
-        .create(50 * col, gameState.rowToYValue[row], value, 0)
+        .create(50 * col, initialValues.rowToYValue[row], value, 0)
         .setScale(gameState.scale)
         .setGravityY(-200)
         .setName(`Bug ${col}:${row}`);
@@ -156,12 +156,12 @@ function makeBullets(velocities, name, randomBug, pellets) {
   }
 }
 
-export function genPellet(gameState, pellets) {
+export function genPellet(gameState, pellets, scene) {
   let randomBug = Phaser.Utils.Array.GetRandom(gameState.enemies.getChildren());
   //most of the time we spawn a enemy projectile.
   //but x% of the time (let's say 1% for now) we spawn a powerup. 1% may be too generous.
   const isPowerup = rollAnNSidedDie(100) == 1;
-  if (isPowerup) {
+  if (isPowerup && parseInt(scene.healthBar.frame.name) >= 1) {
     const powerUp = gameState.powerUps.create(
       randomBug.x,
       randomBug.y,
