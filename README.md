@@ -10,6 +10,7 @@
 
 ## Authors and acknowledgment
 
+
 Code: me  
 Sounds: [YourPalRob](https://yourpalrob.itch.io/) and [Kronbits](https://kronbits.itch.io/)  
 Music: [Dos88](https://dos88.itch.io/)  
