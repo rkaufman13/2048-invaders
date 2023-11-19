@@ -1,6 +1,6 @@
 # 2048 invaders
 
-2048 is a probably unwinnable game.  I made it to practice the lessons in the Codecademy Phaser course.
+2048 is a probably unwinnable game. Good luck.
 
 ## How to play
 
@@ -8,8 +8,7 @@
 
 ## Authors and acknowledgment
 
-The base Phaser code to render the game screen and move enemies is inspired by a Codecademy tutorial. The rest was coded by Rachel Kaufman with much wailing and gnashing of teeth.
-
+Code: me
 Sounds: [YourPalRob](https://yourpalrob.itch.io/) and [Kronbits](https://kronbits.itch.io/)
 Music: [Dos88](https://dos88.itch.io/)
 Graphics: me, [Gustavo Vitori](https://gvituri.itch.io/)
