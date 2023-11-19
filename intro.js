@@ -33,12 +33,12 @@ export default class Intro extends Phaser.Scene {
     });
 
     const settings = this.add
-      .text(225, 350, "Settings")
+      .text(100, 350, "Settings and how to play")
       .setInteractive()
       .setAlpha(0);
 
     const startButton = this.add
-      .text(225, 300, "Start")
+      .text(100, 300, "Start")
       .setInteractive()
       .setAlpha(0);
 
