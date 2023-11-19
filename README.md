@@ -10,6 +10,6 @@
 
 The base Phaser code to render the game screen and move enemies is inspired by a Codecademy tutorial. The rest was coded by Rachel Kaufman with much wailing and gnashing of teeth.
 
-Sounds:
-Music:
-Graphics:
+Sounds: [YourPalRob](https://yourpalrob.itch.io/) and [Kronbits](https://kronbits.itch.io/)
+Music: [Dos88](https://dos88.itch.io/)
+Graphics: me, [Gustavo Vitori](https://gvituri.itch.io/)
