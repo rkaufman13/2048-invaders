@@ -12,6 +12,8 @@ import {
   addBackground,
   generateBugInTopRow,
   genTimedSpawn,
+  getLowestYEnemy,
+  moveEnemiesDown,
 } from "./helpermethods.js";
 
 import { initialValues, LEFT_BUFFER, RIGHT_BUFFER } from "./constants.js";
@@ -19,7 +21,7 @@ import { initialValues, LEFT_BUFFER, RIGHT_BUFFER } from "./constants.js";
 const gameState = { ...initialValues };
 
 const youWin = (scene) => {
-  gameState.active = false;
+  this.active = false;
   gameState.pelletsLoop.destroy();
   gameState.megaPowerUpLoop.destroy();
   scene.physics.pause();
@@ -32,7 +34,7 @@ export default class mainGame extends Phaser.Scene {
   }
 
   init(data) {
-    gameState.volume = data.sfxVolume || 100;
+    this.volume = data.sfxVolume || 100;
   }
 
   preload() {
@@ -82,7 +84,7 @@ export default class mainGame extends Phaser.Scene {
     });
 
     this.load.image("platform", "assets/platform.png");
-    this.load.image("codey", "assets/ship.png");
+    this.load.image("ship", "assets/ship.png");
     this.load.image("enemyBullet", "assets/enemybullet.png");
     this.load.spritesheet("playerBullets", "assets/basicbullet.png", {
       frameWidth: 20,
@@ -140,8 +142,8 @@ export default class mainGame extends Phaser.Scene {
 
   create() {
     function gameOver(scene) {
-      gameState.active = false;
-      gameState.bgm.stop();
+      scene.active = false;
+      scene.bgm.stop();
       gameState.pelletsLoop.destroy();
       gameState.generateMegaMagnets.destroy();
       scene.timedSpawn.destroy();
@@ -153,72 +155,73 @@ export default class mainGame extends Phaser.Scene {
       });
     }
 
-    // When gameState.active is true, the game is being played and not over. When gameState.active is false, then it's game over
-    gameState.active = true;
+    this.active = true;
+    this.activeBug = 0;
+    this.randomSpawnCounter = 0;
+    this.enemyVelocity = 0.5;
 
     addBackground(this);
 
-    gameState.shoot = this.sound.add("shoot", {
+    this.shoot = this.sound.add("shoot", {
       loop: false,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
     const heal = this.sound.add("heal", {
       loop: false,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
     const hitSelf = this.sound.add("hitSelf", {
       loop: false,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
     const explosion = this.sound.add("explosion", {
       loop: false,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
     const powerUpGained = this.sound.add("collectMagnet", {
       loop: false,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
-    gameState.shootMegaMagnetFX = this.sound.add("shootMegaMagnet", {
+    this.shootMegaMagnetFX = this.sound.add("shootMegaMagnet", {
       loop: false,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
 
     gameState.genMegaMagnetFX = this.sound.add("generateMagnet", {
       loop: false,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
 
     this.firstHit = this.sound.add("firstHit", {
       loop: false,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
     this.secondHitBad = this.sound.add("secondHitBad", {
       loop: false,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
     this.secondHitGood = this.sound.add("secondHitGood", {
       loop: false,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
-    gameState.bgm = this.sound.add("bgm", {
+    this.bgm = this.sound.add("bgm", {
       loop: true,
-      volume: gameState.volume / 100,
+      volume: this.volume / 100,
     });
-    gameState.bgm.play();
+    this.bgm.play();
     this.events.on("resume", () => {
-      gameState.bgm.resume();
+      this.bgm.resume();
     });
 
-    // When gameState.active is false, the game will listen for a pointerup event and restart when the event happens
     this.input.on("pointerup", () => {
-      if (gameState.active === false) {
+      if (this.active === false) {
         this.scene.restart();
         this.gameState = initialValues;
       }
     });
 
     //create score counter
-    const scoreText = this.add.text(
+    this.scoreText = this.add.text(
       300,
       10,
       `Your score: ${gameState.sumValueOfEnemies}`,
@@ -246,8 +249,8 @@ export default class mainGame extends Phaser.Scene {
     //create 2 rows of 8 enemies with value 2
     createStartingEnemies(gameState, 2, 3, 4);
 
-    gameState.cursors = this.input.keyboard.createCursorKeys();
-    gameState.pauseButton = this.input.keyboard.addKey("P");
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.pauseButton = this.input.keyboard.addKey("P");
 
     const pellets = this.physics.add.group();
 
@@ -257,7 +260,7 @@ export default class mainGame extends Phaser.Scene {
     gameState.megaPowerUpPickups = this.physics.add.group();
 
     gameState.megaPowerUp = null;
-    gameState.playerBullets = this.physics.add.group();
+    this.playerBullets = this.physics.add.group();
 
     gameState.pelletsLoop = this.time.addEvent({
       delay: 1000,
@@ -280,17 +283,17 @@ export default class mainGame extends Phaser.Scene {
       callback: genTimedSpawn,
       loop: true,
       callbackScope: this,
-      args: [gameState],
+      args: [gameState, this],
     });
 
     // Uses the physics plugin to create the player
-    gameState.player = this.physics.add.sprite(225, 475, "codey").setScale(2);
+    this.player = this.physics.add.sprite(225, 515, "ship").setScale(2);
     //set healthBar
-    gameState.healthBar = this.add.image(40, 15, "healthBar", 0).setScale(2);
+    this.healthBar = this.add.image(40, 15, "healthBar", 0).setScale(2);
 
     // Create Colliders
-    gameState.player.setCollideWorldBounds(true);
-    this.physics.add.collider(gameState.player, platforms);
+    this.player.setCollideWorldBounds(true);
+    this.physics.add.collider(this.player, platforms);
     this.physics.add.collider(pellets, platforms, function (pellet) {
       pellet.destroy();
     });
@@ -313,15 +316,14 @@ export default class mainGame extends Phaser.Scene {
       }
     );
 
-    //comment out the enemy pellet collider below to test the game without dying
-    this.physics.add.collider(pellets, gameState.player, (player, pellet) => {
+    this.physics.add.collider(pellets, this.player, (player, pellet) => {
       pellet.destroy();
 
-      if (gameState.healthBar.frame.name < 3) {
+      if (this.healthBar.frame.name < 3) {
         hitSelf.play();
-        gameState.healthBar.setFrame(gameState.healthBar.frame.name + 1);
+        this.healthBar.setFrame(this.healthBar.frame.name + 1);
       } else {
-        gameState.healthBar.setFrame(4);
+        this.healthBar.setFrame(4);
         explosion.play();
         gameOver(this);
       }
@@ -329,20 +331,20 @@ export default class mainGame extends Phaser.Scene {
 
     //make healing items heal you
     this.physics.add.collider(
-      gameState.player,
+      this.player,
       gameState.powerUps,
       (player, powerUp) => {
         powerUp.destroy();
         heal.play();
-        if (gameState.healthBar.frame.name > 0) {
-          gameState.healthBar.setFrame(gameState.healthBar.frame.name - 1);
+        if (this.healthBar.frame.name > 0) {
+          this.healthBar.setFrame(this.healthBar.frame.name - 1);
         }
       }
     );
 
     //give the magnet to the player when they catch it
     this.physics.add.collider(
-      gameState.player,
+      this.player,
       gameState.megaPowerUpPickups,
       (player, megaPowerUp) => {
         megaPowerUp.destroy();
@@ -354,7 +356,6 @@ export default class mainGame extends Phaser.Scene {
     );
 
     function mainGameLoop(hitBug, repellent, scene) {
-      //get rid of the pellet and stop the enemy from moving backward
       repellent.destroy();
       hitBug.setVelocityY(0);
 
@@ -362,64 +363,53 @@ export default class mainGame extends Phaser.Scene {
       if (parseInt(hitBug.texture.key) === 2048) {
         youWin(scene);
       }
-      if (gameState.activeBug === 0) {
-        gameState.activeBug = hitBug;
+      if (scene.activeBug === 0) {
+        scene.activeBug = hitBug;
         hitBug.setFrame(1);
         scene.firstHit.play();
       } else {
-        const oldBug = gameState.activeBug;
+        const oldBug = scene.activeBug;
         if (oldBug === hitBug) {
-          gameState.activeBug = 0;
+          scene.activeBug = 0;
           scene.secondHitBad.play();
           hitBug.setFrame(0);
         } else if (hitBug.value === oldBug.value) {
           const yVal = Math.ceil(hitBug.y / 10) * 10;
           const doubleBugVal = hitBug.value * 2;
           const xVal = hitBug.x;
-          const rowIsEmpty = bottomRowIsOrWillBeEmpty(
-            hitBug,
-            oldBug,
-            gameState
-          );
-          gameState.activeBug = 0;
+          const rowIsEmpty = bottomRowIsOrWillBeEmpty(oldBug, gameState);
+          scene.activeBug = 0;
           scene.secondHitGood.play();
           tweenAndDestroy(hitBug, oldBug, xVal, yVal, scene);
 
           spawnBug(
             hitBug.x,
-            yVal,
             doubleBugVal,
             hitBug.row,
             hitBug.col,
-            gameState
+            gameState,
+            scene
           );
-          if (rowIsEmpty) {
-            gameState.enemies.getChildren().forEach((bug) => {
-              scene.tweens.add({
-                targets: bug,
-                y: bug.y + 50,
-                duration: 50,
-                repeat: 0,
-              });
-            });
+          if (rowIsEmpty && getLowestYEnemy(gameState).y < 300) {
+            moveEnemiesDown(gameState);
           }
           updateScore(gameState);
-          scoreText.setText(`Your score: ${gameState.sumValueOfEnemies}`);
+          scene.scoreText.setText(`Your score: ${gameState.sumValueOfEnemies}`);
 
-          gameState.randomspawncounter++;
+          scene.randomSpawnCounter++;
           if (rollAnNSidedDie(3) === 0) {
-            gameState.randomspawncounter++;
+            scene.randomSpawnCounter++;
           }
 
-          if (gameState.randomspawncounter >= 2) {
-            generateBugInTopRow(gameState, hitBug);
-            gameState.randomspawncounter = 0;
+          if (scene.randomSpawnCounter >= 2) {
+            generateBugInTopRow(gameState, hitBug, scene);
+            scene.randomSpawnCounter = 0;
           }
         }
 
         //otherwise, they hit two different bugs but NOT ones that match, so we reset
         else {
-          gameState.activeBug = hitBug;
+          scene.activeBug = hitBug;
           hitBug.setFrame(1);
           oldBug.setFrame(0);
           scene.secondHitBad.play();
@@ -436,10 +426,10 @@ export default class mainGame extends Phaser.Scene {
 
       const matchingEnemies = gameState.enemies
         .getChildren()
-        .filter((enemy) => parseInt(enemy.texture.key) == hitBugValue);
+        .filter((enemy) => enemy.value == hitBugValue);
 
       const matchingEnemiesValues = matchingEnemies
-        .map((enemy) => parseInt(enemy.texture.key))
+        .map((enemy) => enemy.value)
         .reduce((acc, curr) => acc + curr);
       let newBugValue;
       for (let i = matchingEnemiesValues; i >= 2; i--) {
@@ -465,23 +455,22 @@ export default class mainGame extends Phaser.Scene {
 
       spawnBug(
         hitBugX,
-        hitBugY,
         newBugValue,
         hitBug.row,
         hitBug.col,
-        gameState
+        gameState,
+        scene.scene
       );
       //cleanup--if any bugs were in a hit state we want to reset everything
-      gameState.activeBug = 0;
+      scene.activeBug = 0;
       gameState.enemies.getChildren().forEach((enemy) => {
         enemy.setFrame(0);
       });
     }
 
-    //main game loop
     this.physics.add.collider(
       gameState.enemies,
-      gameState.playerBullets,
+      this.playerBullets,
       (hitBug, repellent) => {
         mainGameLoop(hitBug, repellent, this);
       }
@@ -526,63 +515,76 @@ export default class mainGame extends Phaser.Scene {
   }
 
   update() {
-    if (gameState.active) {
+    if (this.active) {
       // If the game is active, then players can control the ship
-      if (gameState.cursors.left.isDown) {
-        gameState.player.setVelocityX(-160);
-      } else if (gameState.cursors.right.isDown) {
-        gameState.player.setVelocityX(160);
+      if (this.cursors.left.isDown) {
+        this.player.setVelocityX(-220);
+      } else if (this.cursors.right.isDown) {
+        this.player.setVelocityX(220);
       } else {
-        gameState.player.setVelocityX(0);
+        this.player.setVelocityX(0);
       }
 
       // Fire at the enemies
-      if (Phaser.Input.Keyboard.JustDown(gameState.cursors.space)) {
-        gameState.shoot.play();
-        const bullet = gameState.playerBullets
-          .create(gameState.player.x, gameState.player.y, "playerBullets")
-          .setGravityY(-400)
-          .setVelocityY(-300);
+      if (Phaser.Input.Keyboard.JustDown(this.cursors.space)) {
+        this.shoot.play();
+        const bullet = this.playerBullets
+          .create(this.player.x, this.player.y, "playerBullets")
+          .setGravityY(-450)
+          .setVelocityY(-400);
         bullet.setScale(0.75);
         bullet.play("shootPlayerBullet");
       }
 
       //fire megamagnet
-      if (Phaser.Input.Keyboard.JustDown(gameState.cursors.shift)) {
+      if (Phaser.Input.Keyboard.JustDown(this.cursors.shift)) {
         if (gameState.timeForMegaPowerUp) {
           gameState.timeForMegaPowerUp = false;
           this.inventory.setFrame(0);
           gameState.megaPowerUp = gameState.megaPowerUps
-            .create(gameState.player.x, gameState.player.y, "megaPowerup")
+            .create(this.player.x, this.player.y, "megaPowerup")
             .setGravityY(-400)
             .setScale(0.25)
             .setName("megaPowerup");
           gameState.megaPowerUp.play("shootMegaMagnetAnim");
-          gameState.shootMegaMagnetFX.play();
+          this.shootMegaMagnetFX.play();
         } else {
           //pass
         }
       }
 
-      if (Phaser.Input.Keyboard.JustDown(gameState.pauseButton)) {
-        gameState.bgm.pause();
+      if (Phaser.Input.Keyboard.JustDown(this.pauseButton)) {
+        this.bgm.pause();
         this.scene.launch("paused");
         this.scene.pause();
       }
-      // Add logic for winning condition and enemy movements below:
 
       gameState.enemies
         .getChildren()
-        .forEach((bug) => (bug.x = bug.x + gameState.enemyVelocity));
-      gameState.leftMostBug = sortedEnemies(gameState)[0];
-      gameState.rightMostBug =
+        .forEach((bug) => (bug.x = bug.x + this.enemyVelocity));
+
+      const leftMostBug = sortedEnemies(gameState)[0];
+      const rightMostBug =
         sortedEnemies(gameState)[sortedEnemies(gameState).length - 1];
       if (
-        gameState.leftMostBug.x < 10 + LEFT_BUFFER ||
-        gameState.rightMostBug.x > 440 - RIGHT_BUFFER
+        leftMostBug.x < 10 + LEFT_BUFFER ||
+        rightMostBug.x > 440 - RIGHT_BUFFER
       ) {
-        gameState.enemyVelocity = gameState.enemyVelocity * -1;
+        this.enemyVelocity *= -1;
       }
+
+      //if bug y does not equal the bug's y as determined by its row, fix
+      gameState.enemies.getChildren().forEach((bug) => {
+        const desiredY = gameState.rowToYValue[bug.row];
+        if (bug.y != desiredY) {
+          this.tweens.add({
+            targets: bug,
+            y: desiredY,
+            duration: 100,
+            repeat: 0,
+          });
+        }
+      });
     }
   }
 }

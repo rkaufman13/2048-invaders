@@ -1,18 +1,22 @@
-export const initialValues = {
-  enemyVelocity: 0.5,
-  powerUpVelocity: 1,
-  activeBug: 0,
-  randomspawncounter: 0,
-  sumValueOfEnemies: 0,
-  scale: 0.5,
-};
-
 export const TOP_BUFFER = 50;
 export const LEFT_BUFFER = 25;
 export const RIGHT_BUFFER = 15;
 export const basicFontConfig = {
   fontSize: "15px",
   fill: "#fff",
+};
+
+export const initialValues = {
+  powerUpVelocity: 1,
+  randomspawncounter: 0,
+  sumValueOfEnemies: 0,
+  scale: 0.5,
+  rowToYValue: {
+    1: 0 + TOP_BUFFER,
+    2: 50 + TOP_BUFFER,
+    3: 100 + TOP_BUFFER,
+    4: 150 + TOP_BUFFER,
+  },
 };
 
 export const instructions =

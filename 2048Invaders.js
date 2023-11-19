@@ -6,7 +6,7 @@ import settings from "./settings.js";
 const config = {
   type: Phaser.AUTO,
   width: 450,
-  height: 550,
+  height: 525,
   physics: {
     default: "arcade",
     arcade: {

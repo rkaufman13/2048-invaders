@@ -9,12 +9,30 @@ export function sortedEnemies(gameState) {
   return orderedByXCoord;
 }
 
+export function moveEnemiesDown(gameState, addition = 50) {
+  for (const [row, value] of Object.entries(gameState.rowToYValue)) {
+    gameState.rowToYValue[row] = value + addition;
+  }
+}
+
 export function sortedEnemiesY(gameState) {
   return gameState.enemies.getChildren().sort((a, b) => a.y - b.y);
 }
 
 export function sortedEnemiesRow(gameState) {
   return gameState.enemies.getChildren().sort((a, b) => a.row - b.row);
+}
+
+export function getLowestYEnemy(gameState) {
+  return sortedEnemiesY(gameState)[sortedEnemiesY(gameState).length - 1];
+}
+
+export function getHighestYEnemy(gameState) {
+  return sortedEnemiesY(gameState)[0];
+}
+
+export function getHighestRowEnemy(gameState) {
+  return sortedEnemiesRow(gameState)[0];
 }
 
 export function rollAnNSidedDie(n) {
@@ -40,14 +58,14 @@ export const findValidXSlot = (gameState, row) => {
   return [(slot - 1) * 50 + sortedEnemies(gameState)[0].x, slot];
 };
 
-export const bottomRowIsOrWillBeEmpty = (hitBug, oldBug, gameState) => {
+export const bottomRowIsOrWillBeEmpty = (oldBug, gameState) => {
   /*we need to account for the following states, which is actually quite simple:
     1) if both killed bugs were in the bottom row, When the callback is completed, there will be (at least) one new bug in this row, so the row cannot be empty.
     2) if one killed bug was in the bottom row, and there are or are not bugs in that row. if the more recently "touched" bug is in the bottom row, the row cannot be empty.
     2.5) if the less recently "touched" bug is in the bottom row, it may be the last bug in the row.
     3) neither killed bug was in the bottom row, in which case the bottom row cannot be empty.
     */
-  const sortedEnemies = sortedEnemiesY(gameState);
+  const sortedEnemies = sortedEnemiesRow(gameState);
   const bottomRow = sortedEnemies[sortedEnemies.length - 1].row;
   if (
     oldBug.row == bottomRow &&
@@ -69,12 +87,20 @@ export function rowHasSpace(gameState, row) {
   return rowEmptySlots > 0;
 }
 
-export function spawnBug(xVal, yVal, bugVal, row, col, gameState) {
+export function spawnBug(xVal, bugVal, row, col, gameState, scene) {
   const newEnemy = gameState.enemies
-    .create(xVal, yVal, bugVal)
-    .setScale(gameState.scale)
+    .create(xVal, gameState.rowToYValue[row], bugVal)
+    .setScale(0.05)
     .setGravityY(-200)
-    .setName(`Bug ${xVal}:${yVal}`);
+    .setName(`Bug ${col}:${row}`)
+    .setAlpha(0);
+  scene.tweens.add({
+    targets: newEnemy,
+    alpha: 1,
+    scale: gameState.scale,
+    duration: 200,
+    repeat: 0,
+  });
   newEnemy.row = row;
   newEnemy.col = col;
   newEnemy.value = bugVal;
@@ -95,22 +121,21 @@ export function tweenAndDestroy(hitBug, oldBug, xVal, yVal, scene) {
 }
 
 export function createStartingEnemies(gameState, value, firstRow, secondRow) {
-  for (let xVal = 1; xVal < 9; xVal++) {
-    for (let yVal = firstRow; yVal <= secondRow; yVal++) {
+  for (let col = 1; col < 9; col++) {
+    for (let row = firstRow; row <= secondRow; row++) {
       const enemy = gameState.enemies
-        .create(50 * xVal, 50 * yVal + TOP_BUFFER, value, 0)
+        .create(50 * col, gameState.rowToYValue[row], value, 0)
         .setScale(gameState.scale)
         .setGravityY(-200)
-        .setName(`Bug ${xVal}:${yVal}`);
-      enemy.row = yVal;
-      enemy.col = xVal;
+        .setName(`Bug ${col}:${row}`);
+      enemy.row = row;
+      enemy.col = col;
       enemy.value = value;
     }
   }
 }
 
 function makeBullet(velocityX, velocityY, name, randomBug, pellets) {
-  console.log(`making bullet for ${randomBug.value}`);
   pellets
     .create(randomBug.x, randomBug.y, "enemyBullet")
     .setScale(1.5)
@@ -277,7 +302,10 @@ export function genMegaMagnet(gameState) {
   gameState.megaPowerUpPickup = megaMagnet;
 }
 
-export function genTimedSpawn(gameState) {
+export function genTimedSpawn(gameState, scene) {
+  // sortedEnemiesRow(gameState).forEach((bug) =>
+  //   console.log(`[${bug.x},${bug.y}], row: ${bug.row}, value: ${bug.value}`)
+  // );
   if (rollAnNSidedDie(2) == 1) {
     const lowestValEnemy = gameState.enemies
       .getChildren()
@@ -285,43 +313,42 @@ export function genTimedSpawn(gameState) {
         (enemy, enemy2) =>
           parseInt(enemy.texture.key) - parseInt(enemy2.texture.key)
       )[0];
-    generateBugInTopRow(gameState, lowestValEnemy);
+    generateBugInTopRow(gameState, lowestValEnemy, scene);
   } else {
-    generateBugInBottomRow(gameState);
+    generateBugInBottomRow(gameState, scene);
   }
 }
 
-export function generateBugInTopRow(gameState, baseBug) {
+export function generateBugInTopRow(gameState, baseBug, scene) {
   if (rowHasSpace(gameState, sortedEnemiesRow(gameState)[0].row)) {
     const topRow = sortedEnemiesRow(gameState)[0].row;
     const [xVal, col] = findValidXSlot(gameState, topRow);
-    console.log("column chosen in partially empty row:", col);
-    const yVal = sortedEnemiesY(gameState)[0].y;
-    const row = sortedEnemiesY(gameState)[0].row;
-    spawnBug(xVal, yVal, getRandBug(baseBug), row, col, gameState);
+    const row = getHighestRowEnemy(gameState).row;
+    spawnBug(xVal, getRandBug(baseBug), row, col, gameState, scene);
   } else {
     const col = rollAnNSidedDie(8);
-    console.log("column chosen in new (empty) row:", col);
     const xVal = (col - 1) * 50 + sortedEnemies(gameState)[0].x;
-    const yVal = sortedEnemiesY(gameState)[0].y - 50;
-    const row = sortedEnemiesY(gameState)[0].row - 1;
-    spawnBug(xVal, yVal, getRandBug(baseBug), row, col, gameState);
-    while (sortedEnemiesY(gameState)[0].y < TOP_BUFFER) {
-      gameState.enemies.getChildren().forEach((bug) => (bug.y += 20));
+    const row = getHighestRowEnemy(gameState).row - 1;
+    if (!gameState.rowToYValue[row]) {
+      gameState.rowToYValue[row] =
+        gameState.rowToYValue[getHighestRowEnemy(gameState).row] - 50;
+    }
+    spawnBug(xVal, getRandBug(baseBug), row, col, gameState, scene);
+    if (getHighestRowEnemy(gameState).y < TOP_BUFFER) {
+      moveEnemiesDown(gameState);
     }
   }
 }
 
-function generateBugInBottomRow(gameState) {
+function generateBugInBottomRow(gameState, scene) {
   const bottomRow =
     sortedEnemiesRow(gameState)[sortedEnemiesRow(gameState).length - 1].row;
   if (rowHasSpace(gameState, bottomRow)) {
     const [xVal, col] = findValidXSlot(gameState, bottomRow);
-    const yVal =
-      sortedEnemiesY(gameState)[sortedEnemiesY(gameState).length - 1].y;
-    const row =
-      sortedEnemiesY(gameState)[sortedEnemiesY(gameState).length - 1].row;
-    spawnBug(xVal, yVal, 2, row, col, gameState);
+    const row = getLowestYEnemy(gameState).row;
+    spawnBug(xVal, 2, row, col, gameState, scene);
+  } else {
+    generateBugInTopRow(gameState, 2, scene);
   }
 }
 
