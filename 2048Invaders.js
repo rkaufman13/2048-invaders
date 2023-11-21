@@ -18,4 +18,4 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
-game.debugMode = true;
+game.debugMode = false;
