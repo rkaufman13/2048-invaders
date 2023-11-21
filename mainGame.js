@@ -350,7 +350,9 @@ export default class mainGame extends Phaser.Scene {
       });
       if (this.healthBar.frame.name < 3) {
         hitSelf.play();
-        this.healthBar.setFrame(this.healthBar.frame.name + 1);
+        if (!this.sys.game.debugMode) {
+          this.healthBar.setFrame(this.healthBar.frame.name + 1);
+        }
       } else {
         this.healthBar.setFrame(4);
         this.player.destroy();
