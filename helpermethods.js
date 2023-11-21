@@ -1,4 +1,9 @@
-import { TOP_BUFFER, initialValues } from "./constants.js";
+import {
+  LEFT_BUFFER,
+  RIGHT_BUFFER,
+  TOP_BUFFER,
+  initialValues,
+} from "./constants.js";
 
 // Helper Methods below:
 // sortedEnemies() returns an array of enemy sprites sorted by their x coordinate
@@ -52,7 +57,11 @@ export const findValidXSlot = (gameState, row) => {
     .filter((enemy) => enemy.row == row)
     .map((enemy) => enemy.col);
   let slot = rollAnNSidedDie(8);
-  while (filledSlots.includes(slot)) {
+  while (
+    filledSlots.includes(slot) ||
+    (slot - 1) * 50 + sortedEnemies(gameState)[0].x > 450 - RIGHT_BUFFER ||
+    (slot - 1) * 50 + sortedEnemies(gameState)[0].x < LEFT_BUFFER + 10
+  ) {
     slot = rollAnNSidedDie(8);
   }
   return [(slot - 1) * 50 + sortedEnemies(gameState)[0].x, slot];
